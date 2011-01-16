@@ -1,92 +1,93 @@
-#!/bin/sh
-#
-# nginx
-#
-# chkconfig:   - 57 47
-# description: nginx
-# processname:  nginx
-# config:       /etc/sysconfig/nginx
-#
+#! /bin/sh
 
-# Source function library.
-. /etc/rc.d/init.d/functions
+### BEGIN INIT INFO
+# Provides:          nginx
+# Required-Start:    $local_fs $remote_fs $network $syslog
+# Required-Stop:     $local_fs $remote_fs $network $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: starts the nginx web server
+# Description:       starts nginx using start-stop-daemon
+### END INIT INFO
 
-# Source networking configuration.
-. /etc/sysconfig/network
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=<%= node[:nginx][:src][:binary] %>
+NAME=nginx
+DESC=nginx
 
-# Check that networking is up.
-[ "$NETWORKING" = "no" ] && exit
-exec=<%= node[:nginx][:src_binary] %>
-prog=$(basename $exec)
+# Include nginx defaults if available
+if [ -f /etc/default/nginx ] ; then
+  . /etc/default/nginx
+fi
 
-# default options, overruled by items in sysconfig
-NGINX_GLOBAL=""
+test -x $DAEMON || exit 0
 
-[ -e /etc/sysconfig/nginx ] && . /etc/sysconfig/nginx
+set -e
 
-lockfile=/var/lock/subsys/nginx
+. /lib/lsb/init-functions
 
-start() {
-    [ -x $exec ] || exit 5
-    echo -n $"Starting $prog: "
-    # if not running, start it up here, usually something like "daemon $exec"
-    options=""
-    if [ "${NGINX_GLOBAL}" != ""  ]; then
-        options="-g ${NGINX_GLOBAL}"
-    fi
-    $exec $options
-    retval=$?
-    echo
-    [ $retval -eq 0 ] && touch $lockfile
-	return $retval
+test_nginx_config() {
+  if $DAEMON -t $DAEMON_OPTS >/dev/null 2>&1
+  then
+    return 0
+  else
+    $DAEMON -t $DAEMON_OPTS
+    return $?
+  fi
 }
 
-stop() {
-	echo -n $"Stopping $prog: "
-	$exec -s stop
-	retval=$?
-	echo
-	[ $retval -eq 0 ] && rm -f $lockfile
-	return $retval
-}
-
-restart() {
-    stop
-    start
-}
-
-reload() {
-	echo -n $"Reloading $prog: "
-	$exec -s reload
-	retval=$?
-	echo
-	[ $retval -eq 0 ] && rm -f $lockfile
-	return $retval
-}
-
-# See how we were called.
-case "$1" in 
+case "$1" in
   start)
-        start
-        ;;
+    echo -n "Starting $DESC: "
+    test_nginx_config
+    # Check if the ULIMIT is set in /etc/default/nginx
+    if [ -n $ULIMIT ]; then
+      # Set the ulimits
+      ulimit $ULIMIT
+    fi
+    start-stop-daemon --start --quiet --pidfile /var/run/$NAME.pid \
+      --exec $DAEMON -- $DAEMON_OPTS || true
+    echo "$NAME."
+    ;;
   stop)
-        stop
-        ;;
+    echo -n "Stopping $DESC: "
+    start-stop-daemon --stop --quiet --pidfile /var/run/$NAME.pid \
+      --exec $DAEMON || true
+    echo "$NAME."
+    ;;
+  restart|force-reload)
+    echo -n "Restarting $DESC: "
+    start-stop-daemon --stop --quiet --pidfile \
+      /var/run/$NAME.pid --exec $DAEMON || true
+    sleep 1
+    test_nginx_config
+    start-stop-daemon --start --quiet --pidfile \
+      /var/run/$NAME.pid --exec $DAEMON -- $DAEMON_OPTS || true
+    echo "$NAME."
+    ;;
+  reload)
+    echo -n "Reloading $DESC configuration: "
+    test_nginx_config
+    start-stop-daemon --stop --signal HUP --quiet --pidfile /var/run/$NAME.pid \
+      --exec $DAEMON || true
+    echo "$NAME."
+    ;;
+  configtest)
+    echo -n "Testing $DESC configuration: "
+    if test_nginx_config
+    then
+      echo "$NAME."
+    else
+      exit $?
+    fi
+    ;;
   status)
-        status nginx
-        ;;
-  restart)
-        restart
-        ;;
-  reload|force-reload)
-		reload
-		;;
-  condrestart)
-        [ -f $lockfile ] && restart || :
-        ;;
+    status_of_proc -p /var/run/$NAME.pid "$DAEMON" nginx && exit 0 || exit $?
+    ;;
   *)
-        echo $"Usage: $0 {start|stop|status|restart|reload|force-reload|condrestart}"
-        exit 1 
+    echo "Usage: $NAME {start|stop|restart|reload|force-reload|status|configtest}" >&2
+    exit 1
+    ;;
 esac
 
-exit $?
+exit 0

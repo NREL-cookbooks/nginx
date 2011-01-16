@@ -22,10 +22,6 @@
 
 include_recipe "build-essential"
 
-unless platform?("centos","redhat","fedora")
-  include_recipe "runit"
-end
-
 packages = value_for_platform(
     ["centos","redhat","fedora"] => {'default' => ['pcre-devel', 'openssl-devel']},
     "default" => ['libpcre3', 'libpcre3-dev', 'libssl-dev']
@@ -35,23 +31,20 @@ packages.each do |devpkg|
   package devpkg
 end
 
-nginx_version = node[:nginx][:version]
-configure_flags = node[:nginx][:configure_flags].join(" ")
-node.set[:nginx][:daemon_disable] = true
-
-remote_file "/tmp/nginx-#{nginx_version}.tar.gz" do
-  source "http://sysoev.ru/nginx/nginx-#{nginx_version}.tar.gz"
+remote_file "/tmp/nginx-#{node[:nginx][:src][:version]}.tar.gz" do
+  source "http://nginx.org/download/nginx-#{node[:nginx][:src][:version]}.tar.gz"
+  checksum node[:nginx][:src][:checksum]
   action :create_if_missing
 end
 
 bash "compile_nginx_source" do
   cwd "/tmp"
   code <<-EOH
-    tar zxf nginx-#{nginx_version}.tar.gz
-    cd nginx-#{nginx_version} && ./configure #{configure_flags}
+    tar zxf nginx-#{node[:nginx][:src][:version]}.tar.gz
+    cd nginx-#{node[:nginx][:src][:version]} && ./configure #{node[:nginx][:src][:configure_flags].join(" ")}
     make && make install
   EOH
-  creates node[:nginx][:src_binary]
+  creates node[:nginx][:src][:binary]
 end
 
 directory node[:nginx][:log_dir] do
@@ -66,43 +59,35 @@ directory node[:nginx][:dir] do
   mode "0755"
 end
 
-unless platform?("centos","redhat","fedora")
-  runit_service "nginx"
+#install init db script
+template "/etc/init.d/nginx" do
+  source "nginx.init.erb"
+  owner "root"
+  group "root"
+  mode "0755"
+end
 
-  service "nginx" do
-    subscribes :restart, resources(:bash => "compile_nginx_source")
-  end
-else
-  #install init db script
-  template "/etc/init.d/nginx" do
-    source "nginx.init.erb"
-    owner "root"
-    group "root"
-    mode "0755"
-  end
+#install sysconfig file (not really needed but standard)
+template "/etc/default/nginx" do
+  source "nginx.sysconfig.erb"
+  owner "root"
+  group "root"
+  mode "0644"
+end
 
-  #install sysconfig file (not really needed but standard)
-  template "/etc/sysconfig/nginx" do
-    source "nginx.sysconfig.erb"
-    owner "root"
-    group "root"
-    mode "0644"
-  end
-
-  #register service
-  service "nginx" do
-    supports :status => true, :restart => true, :reload => true
-    action :enable
-    subscribes :restart, resources(:bash => "compile_nginx_source")
-  end
+#register service
+service "nginx" do
+  supports :status => true, :restart => true, :reload => true
+  action :enable
+  subscribes :restart, resources(:bash => "compile_nginx_source")
 end
 
 
 %w{ sites-available sites-enabled conf.d }.each do |dir|
   directory "#{node[:nginx][:dir]}/#{dir}" do
     owner "root"
-    group "root"
-    mode "0755"
+    group(node[:common_writable_group] || "root")
+    mode "0775"
   end
 end
 
@@ -121,7 +106,7 @@ template "nginx.conf" do
   owner "root"
   group "root"
   mode "0644"
-  notifies :restart, resources(:service => "nginx"), :immediately
+  notifies :restart, resources(:service => "nginx")
 end
 
 cookbook_file "#{node[:nginx][:dir]}/mime.types" do
@@ -129,5 +114,18 @@ cookbook_file "#{node[:nginx][:dir]}/mime.types" do
   owner "root"
   group "root"
   mode "0644"
-  notifies :restart, resources(:service => "nginx"), :immediately
+  notifies :restart, resources(:service => "nginx")
+end
+
+directory "/var/www/nginx-default" do
+  mode 0755
+  owner node[:nginx][:user]
+  action :create
+end
+
+template "#{node[:nginx][:dir]}/sites-available/default" do
+  source "default-site.erb"
+  owner "root"
+  group "root"
+  mode 0644
 end
