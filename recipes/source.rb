@@ -121,6 +121,7 @@ directory "/var/www/nginx-default" do
   mode 0755
   owner node[:nginx][:user]
   action :create
+  recursive true
 end
 
 template "#{node[:nginx][:dir]}/sites-available/default" do
