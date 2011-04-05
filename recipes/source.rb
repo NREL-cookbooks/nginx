@@ -47,6 +47,13 @@ bash "compile_nginx_source" do
   creates node[:nginx][:src][:binary]
 end
 
+user node[:nginx][:user] do
+  comment "Nginx user"
+  shell "/bin/false"
+  system true
+  home node[:nginx][:install_path]
+end
+
 directory node[:nginx][:log_dir] do
   mode 0755
   owner node[:nginx][:user]
@@ -75,14 +82,6 @@ template "/etc/default/nginx" do
   mode "0644"
 end
 
-#register service
-service "nginx" do
-  supports :status => true, :restart => true, :reload => true
-  action :enable
-  subscribes :restart, resources(:bash => "compile_nginx_source")
-end
-
-
 %w{ sites-available sites-enabled conf.d }.each do |dir|
   directory "#{node[:nginx][:dir]}/#{dir}" do
     owner "root"
@@ -98,6 +97,12 @@ end
     owner "root"
     group "root"
   end
+end
+
+service "nginx" do
+  supports :status => true, :restart => true, :reload => true
+  action [:enable, :start]
+  subscribes :restart, resources(:bash => "compile_nginx_source")
 end
 
 template "nginx.conf" do
@@ -124,9 +129,4 @@ directory "/var/www/nginx-default" do
   recursive true
 end
 
-template "#{node[:nginx][:dir]}/sites-available/default" do
-  source "default-site.erb"
-  owner "root"
-  group "root"
-  mode 0644
-end
+include_recipe "nginx::default_site"

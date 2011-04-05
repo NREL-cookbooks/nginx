@@ -18,7 +18,7 @@ when "debian","ubuntu"
 else
   set[:nginx][:dir]     = "/etc/nginx"
   set[:nginx][:log_dir] = "/var/log/nginx"
-  set[:nginx][:user]    = "www-data"
+  set[:nginx][:user]    = "nginx"
   set[:nginx][:binary]  = "/usr/sbin/nginx"
 end
 
@@ -45,3 +45,9 @@ default[:nginx][:worker_connections] = 2048
 default[:nginx][:server_names_hash_bucket_size] = 64
 
 default[:nginx][:server_tokens] = "off"
+
+default[:nginx][:default_site][:enable] = true
+default[:nginx][:default_site][:port] = 80
+default[:nginx][:default_site][:status][:enable] = true
+default[:nginx][:default_site][:status][:allow] = "127.0.0.1";
+default[:nginx][:default_site][:status][:deny] = "all";
