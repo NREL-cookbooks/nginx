@@ -49,4 +49,10 @@ template "nginx.conf" do
   notifies :restart, "service[nginx]"
 end
 
+if platform?("centos", "redhat", "fedora")
+  node.set[:nginx][:default_site][:root] = "/usr/share/nginx/html"
+else
+  node.set[:nginx][:default_site][:root] = "/var/www/nginx-default"
+end
+
 include_recipe "nginx::default_site"

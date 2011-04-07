@@ -1,13 +1,4 @@
-default[:nginx][:src][:version]      = "0.7.67"
-default[:nginx][:src][:install_path] = "/opt/nginx-#{nginx[:version]}"
-default[:nginx][:src][:binary]   = "#{nginx[:install_path]}/sbin/nginx"
-default[:nginx][:src][:checksum] = "396c95055d041950831a9ee8ff54473436f212cd770c6bad0aa795637007f747"
-default[:nginx][:src][:configure_flags] = [
-  "--prefix=#{nginx[:install_path]}",
-  "--conf-path=#{nginx[:dir]}/nginx.conf",
-  "--with-http_ssl_module",
-  "--with-http_gzip_static_module"
-]
+default[:nginx][:version]      = "0.8.54"
 
 case platform
 when "debian","ubuntu"
@@ -23,10 +14,10 @@ else
 end
 
 default[:nginx][:gzip] = "on"
-default[:nginx][:gzip_disable] = "msie6"
-default[:nginx][:gzip_http_version] = "1.1"
-default[:nginx][:gzip_comp_level] = "1"
-default[:nginx][:gzip_proxied] = "off"
+default[:nginx][:gzip_http_version] = "1.0"
+default[:nginx][:gzip_comp_level] = "2"
+default[:nginx][:gzip_proxied] = "any"
+default[:nginx][:gzip_disable] = nil
 default[:nginx][:gzip_types] = [
   "text/plain",
   "text/css",

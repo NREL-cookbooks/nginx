@@ -5,7 +5,7 @@
 # Author:: Adam Jacob (<adam@opscode.com>)
 # Author:: Joshua Timberman (<joshua@opscode.com>)
 #
-# Copyright 2009, Opscode, Inc.
+# Copyright 2009-2011, Opscode, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 #
 
 include_recipe "build-essential"
+include_recipe "upstart"
 
 packages = value_for_platform(
     ["centos","redhat","fedora"] => {'default' => ['pcre-devel', 'openssl-devel']},
@@ -31,27 +32,48 @@ packages.each do |devpkg|
   package devpkg
 end
 
-remote_file "/tmp/nginx-#{node[:nginx][:src][:version]}.tar.gz" do
-  source "http://nginx.org/download/nginx-#{node[:nginx][:src][:version]}.tar.gz"
-  checksum node[:nginx][:src][:checksum]
+nginx_version = node[:nginx][:version]
+
+node.set[:nginx][:install_path]    = "/opt/nginx-#{nginx_version}"
+node.set[:nginx][:src_binary]      = "#{node[:nginx][:install_path]}/sbin/nginx"
+node.set[:nginx][:daemon_disable]  = false
+node.set[:nginx][:configure_flags] = [
+  "--prefix=#{node[:nginx][:install_path]}",
+  "--conf-path=#{node[:nginx][:dir]}/nginx.conf",
+  "--with-http_ssl_module",
+  "--with-http_gzip_static_module",
+  "--with-http_stub_status_module",
+  "--with-http_realip_module",
+]
+
+node.set[:nginx][:default_site][:root] = "#{node.set[:nginx][:install_path]}/html"
+
+configure_flags = node[:nginx][:configure_flags].join(" ")
+
+remote_file "#{Chef::Config[:file_cache_path]}/nginx-#{nginx_version}.tar.gz" do
+  source "http://sysoev.ru/nginx/nginx-#{nginx_version}.tar.gz"
   action :create_if_missing
 end
 
 bash "compile_nginx_source" do
-  cwd "/tmp"
+  cwd Chef::Config[:file_cache_path]
   code <<-EOH
-    tar zxf nginx-#{node[:nginx][:src][:version]}.tar.gz
-    cd nginx-#{node[:nginx][:src][:version]} && ./configure #{node[:nginx][:src][:configure_flags].join(" ")}
+    tar zxf nginx-#{nginx_version}.tar.gz
+    cd nginx-#{nginx_version} && ./configure #{configure_flags}
     make && make install
   EOH
-  creates node[:nginx][:src][:binary]
+  creates node[:nginx][:src_binary]
+  notifies :restart, "service[nginx]"
 end
+
+group node[:nginx][:user]
 
 user node[:nginx][:user] do
   comment "Nginx user"
   shell "/bin/false"
   system true
-  home node[:nginx][:install_path]
+  gid node[:nginx][:user]
+  home node[:nginx][:default_site][:root]
 end
 
 directory node[:nginx][:log_dir] do
@@ -66,25 +88,12 @@ directory node[:nginx][:dir] do
   mode "0755"
 end
 
-#install init db script
-template "/etc/init.d/nginx" do
-  source "nginx.init.erb"
-  owner "root"
-  group "root"
-  mode "0755"
-end
-
-#install sysconfig file (not really needed but standard)
-template "/etc/default/nginx" do
-  source "nginx.sysconfig.erb"
-  owner "root"
-  group "root"
-  mode "0644"
-end
+upstart_service "nginx"
 
 %w{ sites-available sites-enabled conf.d }.each do |dir|
   directory "#{node[:nginx][:dir]}/#{dir}" do
     owner "root"
+    group "root"
     group(node[:common_writable_group] || "root")
     mode "0775"
   end
@@ -97,12 +106,6 @@ end
     owner "root"
     group "root"
   end
-end
-
-service "nginx" do
-  supports :status => true, :restart => true, :reload => true
-  action [:enable, :start]
-  subscribes :restart, resources(:bash => "compile_nginx_source")
 end
 
 template "nginx.conf" do
@@ -122,11 +125,5 @@ cookbook_file "#{node[:nginx][:dir]}/mime.types" do
   notifies :restart, resources(:service => "nginx")
 end
 
-directory "/var/www/nginx-default" do
-  mode 0755
-  owner node[:nginx][:user]
-  action :create
-  recursive true
-end
 
 include_recipe "nginx::default_site"

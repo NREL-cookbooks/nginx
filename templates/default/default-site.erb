@@ -4,11 +4,11 @@ server {
   access_log <%= node[:nginx][:log_dir] %>/localhost.access.log;
 
   location / {
-    root /var/www/nginx-default;
+    root <%= node[:nginx][:default_site][:root] %>;
     index index.html index.htm;
   }
 
-  <% if node[:nginx][:default_site][:status][:enabled] %>
+  <% if node[:nginx][:default_site][:status][:enable] %>
   location /nginx_status {
     stub_status on;
     access_log off;
