@@ -35,11 +35,6 @@ end
   end
 end
 
-service "nginx" do
-  supports :status => true, :restart => true, :reload => true
-  action [ :enable, :start ]
-end
-
 template "nginx.conf" do
   path "#{node[:nginx][:dir]}/nginx.conf"
   source "nginx.conf.erb"
@@ -56,3 +51,9 @@ else
 end
 
 include_recipe "nginx::default_site"
+
+service "nginx" do
+  supports :status => true, :restart => true, :reload => true
+  action [ :enable, :start ]
+end
+

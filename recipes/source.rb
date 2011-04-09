@@ -21,7 +21,10 @@
 #
 
 include_recipe "build-essential"
-include_recipe "upstart"
+
+unless platform?("centos","redhat","fedora")
+  include_recipe "runit"
+end
 
 packages = value_for_platform(
     ["centos","redhat","fedora"] => {'default' => ['pcre-devel', 'openssl-devel']},
@@ -36,7 +39,6 @@ nginx_version = node[:nginx][:version]
 
 node.set[:nginx][:install_path]    = "/opt/nginx-#{nginx_version}"
 node.set[:nginx][:src_binary]      = "#{node[:nginx][:install_path]}/sbin/nginx"
-node.set[:nginx][:daemon_disable]  = false
 node.set[:nginx][:configure_flags] = [
   "--prefix=#{node[:nginx][:install_path]}",
   "--conf-path=#{node[:nginx][:dir]}/nginx.conf",
@@ -63,7 +65,6 @@ bash "compile_nginx_source" do
     make && make install
   EOH
   creates node[:nginx][:src_binary]
-  notifies :restart, "service[nginx]"
 end
 
 group node[:nginx][:user]
@@ -88,7 +89,38 @@ directory node[:nginx][:dir] do
   mode "0755"
 end
 
-upstart_service "nginx"
+unless platform?("centos","redhat","fedora")
+  node.set[:nginx][:daemon_disable] = true
+
+  runit_service "nginx"
+
+  service "nginx" do
+    subscribes :restart, resources(:bash => "compile_nginx_source")
+  end
+else
+  #install init db script
+  template "/etc/init.d/nginx" do
+    source "nginx.init.erb"
+    owner "root"
+    group "root"
+    mode "0755"
+  end
+
+  #install sysconfig file (not really needed but standard)
+  template "/etc/sysconfig/nginx" do
+    source "nginx.sysconfig.erb"
+    owner "root"
+    group "root"
+    mode "0644"
+  end
+
+  #register service
+  service "nginx" do
+    supports :status => true, :restart => true, :reload => true
+    action [:enable, :start]
+    subscribes :restart, resources(:bash => "compile_nginx_source")
+  end
+end
 
 %w{ sites-available sites-enabled conf.d }.each do |dir|
   directory "#{node[:nginx][:dir]}/#{dir}" do
@@ -124,6 +156,5 @@ cookbook_file "#{node[:nginx][:dir]}/mime.types" do
   mode "0644"
   notifies :restart, resources(:service => "nginx")
 end
-
 
 include_recipe "nginx::default_site"
