@@ -57,10 +57,17 @@ remote_file "#{Chef::Config[:file_cache_path]}/nginx-#{nginx_version}.tar.gz" do
   action :create_if_missing
 end
 
+# Explicitly uncompress nginx source, regardless of whether or not it needs to
+# be installed, so Passenger can compile against it.
+execute "uncompress_nginx_source" do
+  cwd Chef::Config[:file_cache_path]
+  command "tar zxf nginx-#{nginx_version}.tar.gz"
+  creates "#{Chef::Config[:file_cache_path]}/nginx-#{nginx_version}"
+end
+
 bash "compile_nginx_source" do
   cwd Chef::Config[:file_cache_path]
   code <<-EOH
-    tar zxf nginx-#{nginx_version}.tar.gz
     cd nginx-#{nginx_version} && ./configure #{configure_flags}
     make && make install
   EOH
