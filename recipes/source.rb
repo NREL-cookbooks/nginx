@@ -21,6 +21,8 @@
 #
 
 include_recipe "build-essential"
+include_recipe "iptables::http"
+include_recipe "iptables::https"
 
 unless platform?("centos","redhat","fedora")
   include_recipe "runit"
@@ -53,7 +55,7 @@ node.set[:nginx][:default_site][:root] = "#{node.set[:nginx][:install_path]}/htm
 configure_flags = node[:nginx][:configure_flags].join(" ")
 
 remote_file "#{Chef::Config[:file_cache_path]}/nginx-#{nginx_version}.tar.gz" do
-  source "http://sysoev.ru/nginx/nginx-#{nginx_version}.tar.gz"
+  source "http://nginx.org/download/nginx-#{nginx_version}.tar.gz"
   action :create_if_missing
 end
 

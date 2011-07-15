@@ -18,6 +18,9 @@
 # limitations under the License.
 #
 
+include_recipe "iptables::http"
+include_recipe "iptables::https"
+
 package "nginx"
 
 directory node[:nginx][:log_dir] do
