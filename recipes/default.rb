@@ -44,7 +44,7 @@ template "nginx.conf" do
   owner "root"
   group "root"
   mode 0644
-  notifies :restart, "service[nginx]"
+  notifies :reload, "service[nginx]"
 end
 
 if platform?("centos", "redhat", "fedora")

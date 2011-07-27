@@ -1,5 +1,7 @@
 default[:nginx][:version]      = "0.8.54"
 
+set[:nginx][:pid_file] = "/var/run/nginx.pid"
+
 case platform
 when "debian","ubuntu"
   set[:nginx][:dir]     = "/etc/nginx"

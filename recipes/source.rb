@@ -39,7 +39,7 @@ end
 
 nginx_version = node[:nginx][:version]
 
-node.set[:nginx][:install_path]    = "/opt/nginx-#{nginx_version}"
+node.set[:nginx][:install_path]    = "/opt/nginx"
 node.set[:nginx][:src_binary]      = "#{node[:nginx][:install_path]}/sbin/nginx"
 node.set[:nginx][:configure_flags] = [
   "--prefix=#{node[:nginx][:install_path]}",
@@ -73,7 +73,62 @@ bash "compile_nginx_source" do
     cd nginx-#{nginx_version} && ./configure #{configure_flags}
     make && make install
   EOH
-  creates node[:nginx][:src_binary]
+  not_if "#{node[:nginx][:src_binary]} -v 2>&1 | grep 'nginx version: nginx/#{::Regexp.escape(nginx_version)}$'"
+
+  # Make sure nginx is running and perform the binary upgrade if necessary.
+  notifies :start, "service[nginx]"
+  notifies :run, "bash[nginx_binary_upgrade]"
+end
+
+# When upgrading nginx between versions, use nginx fanciness to do so without
+# downtime:
+# http://wiki.nginx.org/CommandLine#Upgrading_To_a_New_Binary_On_The_Fly
+bash "nginx_binary_upgrade" do
+  action :nothing
+  code <<-EOH
+    PID_FILE="#{node[:nginx][:pid_file]}"
+    OLDBIN_PID_FILE="${PID_FILE}.oldbin"
+    PID=`cat ${PID_FILE}`
+
+    # Test the config file.
+    #{node[:nginx][:src_binary]} -t -c #{node[:nginx][:dir]}/nginx.conf
+    retval=$?
+    if [[ $retval -ne 0 ]]; then
+      echo $"Error: Nginx configuration invalid. Binary upgrade failed. Manually restart?"
+      exit 1
+    fi
+
+    # Make sure the PID file exists.
+    if [[ ! -f ${PID_FILE} ]];  then
+      echo $"Error: Nginx isn't running. Binary upgrade failed. Manually restart?"
+      exit 1
+    fi
+
+    # Make sure a ".oldbin" PID file isn't already around.
+    if [[ -f ${OLDBIN_PID_FILE} ]];  then
+      echo $"Error: Nginx binary upgrade already in process? Manually restart?"
+      exit 1
+    fi
+
+    # Send USR2 signal to start a new master process
+    echo $"Staring new master nginx..."
+    kill -s USR2 ${PID}
+
+    sleep 1
+
+    # If the new process got started, shutdown the old master with the QUIT
+    # signal.
+    if [[ -f ${OLDBIN_PID_FILE} && -f ${PID_FILE} ]];  then
+      OLDBIN_PID=`cat ${OLDBIN_PID_FILE}`
+
+      echo $"Graceful shutdown of old $prog..."
+      kill -s QUIT ${OLDBIN_PID}
+      exit 0
+    else
+      echo $"Error: Nginx binary upgrade failed. Manually restart?"
+      return 1
+    fi
+  EOH
 end
 
 group node[:nginx][:user]
@@ -96,39 +151,6 @@ directory node[:nginx][:dir] do
   owner "root"
   group "root"
   mode "0755"
-end
-
-unless platform?("centos","redhat","fedora")
-  node.set[:nginx][:daemon_disable] = true
-
-  runit_service "nginx"
-
-  service "nginx" do
-    subscribes :restart, resources(:bash => "compile_nginx_source")
-  end
-else
-  #install init db script
-  template "/etc/init.d/nginx" do
-    source "nginx.init.erb"
-    owner "root"
-    group "root"
-    mode "0755"
-  end
-
-  #install sysconfig file (not really needed but standard)
-  template "/etc/sysconfig/nginx" do
-    source "nginx.sysconfig.erb"
-    owner "root"
-    group "root"
-    mode "0644"
-  end
-
-  #register service
-  service "nginx" do
-    supports :status => true, :restart => true, :reload => true
-    action [:enable, :start]
-    subscribes :restart, resources(:bash => "compile_nginx_source")
-  end
 end
 
 %w{ sites-available sites-enabled conf.d }.each do |dir|
@@ -155,7 +177,7 @@ template "nginx.conf" do
   owner "root"
   group "root"
   mode "0644"
-  notifies :restart, resources(:service => "nginx")
+  notifies :reload, "service[nginx]"
 end
 
 cookbook_file "#{node[:nginx][:dir]}/mime.types" do
@@ -163,7 +185,38 @@ cookbook_file "#{node[:nginx][:dir]}/mime.types" do
   owner "root"
   group "root"
   mode "0644"
-  notifies :restart, resources(:service => "nginx")
+  notifies :reload, "service[nginx]"
 end
 
 include_recipe "nginx::default_site"
+
+unless platform?("centos","redhat","fedora")
+  node.set[:nginx][:daemon_disable] = true
+
+  runit_service "nginx"
+
+  service "nginx"
+else
+  #install init db script
+  template "/etc/init.d/nginx" do
+    source "nginx.init.erb"
+    owner "root"
+    group "root"
+    mode "0755"
+  end
+
+  #install sysconfig file (not really needed but standard)
+  template "/etc/sysconfig/nginx" do
+    source "nginx.sysconfig.erb"
+    owner "root"
+    group "root"
+    mode "0644"
+  end
+
+  #register service
+  service "nginx" do
+    supports :status => true, :restart => true, :reload => true
+    action [:enable, :start]
+  end
+end
+
