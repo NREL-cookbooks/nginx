@@ -126,7 +126,7 @@ bash "nginx_binary_upgrade" do
       exit 0
     else
       echo $"Error: Nginx binary upgrade failed. Manually restart?"
-      return 1
+      exit 1
     fi
   EOH
 end
