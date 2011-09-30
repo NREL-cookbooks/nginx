@@ -44,3 +44,7 @@ default[:nginx][:default_site][:port] = 80
 default[:nginx][:default_site][:status][:enable] = true
 default[:nginx][:default_site][:status][:allow] = "127.0.0.1";
 default[:nginx][:default_site][:status][:deny] = "all";
+
+# Logrotate Settings
+default[:nginx][:logrotate][:extra_paths] = []
+default[:nginx][:logrotate][:rotate] = 90

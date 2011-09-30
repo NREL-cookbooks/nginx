@@ -23,6 +23,7 @@
 include_recipe "build-essential"
 include_recipe "iptables::http"
 include_recipe "iptables::https"
+include_recipe "logrotate"
 
 unless platform?("centos","redhat","fedora")
   include_recipe "runit"
@@ -147,6 +148,21 @@ directory node[:nginx][:log_dir] do
   action :create
 end
 
+# Currently we can't enable a custom error log path at the main configuration
+# level for Passenger compatability:
+# http://code.google.com/p/phusion-passenger/issues/detail?id=569#c63
+#
+# So for now, we'll just use the default error log path, but here we'll symlink
+# it to /var/log/nginx/error.log just so it's easier to find.
+file "#{node[:nginx][:log_dir]}/error.log" do
+  action :delete
+  not_if "test -L #{node[:nginx][:log_dir]}/error.log"
+end
+
+link "#{node[:nginx][:log_dir]}/error.log" do
+  to "#{node[:nginx][:install_path]}/logs/error.log"
+end
+
 directory node[:nginx][:dir] do
   owner "root"
   group "root"
@@ -211,6 +227,7 @@ else
     owner "root"
     group "root"
     mode "0644"
+    notifies :reload, "service[nginx]"
   end
 
   #register service
@@ -220,3 +237,9 @@ else
   end
 end
 
+logrotate_app "nginx" do
+  path ["#{node[:nginx][:log_dir]}/*.log", "#{node[:nginx][:install_path]}/logs/*.log", node[:nginx][:logrotate][:extra_paths]].flatten
+  frequency "daily"
+  rotate node[:nginx][:logrotate][:rotate]
+  create "644 #{node[:nginx][:user]} root"
+end

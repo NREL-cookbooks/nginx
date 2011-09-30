@@ -1,0 +1,15 @@
+<% @path.each do |p| -%>
+<%= p %> {
+  <%= @frequency %>
+  missingok
+  rotate <%= @rotate %>
+  compress
+  delaycompress
+  notifempty
+  create <%= @create %>
+  sharedscripts
+  postrotate
+    <%= node[:nginx][:src_binary] %> -s repoen
+  endscript
+}
+<% end -%>
