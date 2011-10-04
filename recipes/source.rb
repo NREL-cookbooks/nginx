@@ -219,6 +219,7 @@ else
     owner "root"
     group "root"
     mode "0755"
+    notifies :restart, "service[nginx]"
   end
 
   #install sysconfig file (not really needed but standard)
@@ -227,7 +228,7 @@ else
     owner "root"
     group "root"
     mode "0644"
-    notifies :reload, "service[nginx]"
+    notifies :restart, "service[nginx]"
   end
 
   #register service
