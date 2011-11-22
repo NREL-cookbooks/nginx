@@ -1,5 +1,4 @@
-<% @path.each do |p| -%>
-<%= p %> {
+<%= @path.join(" ") %> {
   <%= @frequency %>
   missingok
   rotate <%= @rotate %>
@@ -9,7 +8,9 @@
   create <%= @create %>
   sharedscripts
   postrotate
-    <%= node[:nginx][:src_binary] %> -s repoen
+    # Ideally we send nginx the "reopen" signal so a full reload isn't
+    # necessary. But this doesn't properly rotate Pasenger's Rails log files,
+    # so we'll do a "reload" instead.
+    <%= node[:nginx][:src_binary] %> -s reload
   endscript
 }
-<% end -%>

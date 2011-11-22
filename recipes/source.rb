@@ -243,4 +243,5 @@ logrotate_app "nginx" do
   frequency "daily"
   rotate node[:nginx][:logrotate][:rotate]
   create "644 #{node[:nginx][:user]} root"
+  cookbook "nginx"
 end
