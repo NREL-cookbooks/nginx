@@ -1,19 +1,11 @@
 server {
-  listen <%= node[:nginx][:default_site][:port] %> default_server;
+  listen   80;
+  server_name  <%= node[:hostname] %>;
 
-  access_log <%= node[:nginx][:log_dir] %>/localhost.access.log;
+  access_log  <%= node[:nginx][:log_dir] %>/localhost.access.log;
 
   location / {
-    root <%= node[:nginx][:default_site][:root] %>;
-    index index.html index.htm;
+    root   /var/www/nginx-default;
+    index  index.html index.htm;
   }
-
-  <% if node[:nginx][:default_site][:status][:enable] %>
-  location /nginx_status {
-    stub_status on;
-    access_log off;
-    allow <%= node[:nginx][:default_site][:status][:allow] %>;
-    deny <%= node[:nginx][:default_site][:status][:deny] %>;
-  }
-  <% end %>
 }

@@ -1,67 +1,41 @@
 user <%= node[:nginx][:user] %>;
-worker_processes <%= node[:nginx][:worker_processes] %>;
-pid <%= node[:nginx][:pid_file] %>;
+worker_processes  <%= node[:nginx][:worker_processes] %>;
 <% if node[:nginx][:daemon_disable] -%>
 daemon off;
 <% end -%>
 
-# WARNING: Don't enable this custom error log at this main configuration level.
-# Doing so currently seems to cause issues with Passneger reloading at least on
-# our systems:
-# http://code.google.com/p/phusion-passenger/issues/detail?id=569#c63
-# error_log <%= node[:nginx][:log_dir] %>/error.log;
+error_log  <%= node[:nginx][:log_dir] %>/error.log;
+pid        <%= node[:nginx][:pid] %>;
 
 events {
-  worker_connections <%= node[:nginx][:worker_connections] %>;
+  worker_connections  <%= node[:nginx][:worker_connections] %>;
 }
 
 http {
-  ##
-  # Basic Settings
-  ##
+  include       <%= node[:nginx][:dir] %>/mime.types;
+  default_type  application/octet-stream;
+
+  <% unless node[:nginx][:disable_access_log] -%>
+  access_log	<%= node[:nginx][:log_dir] %>/access.log;
+  <% end %>
 
   sendfile on;
   tcp_nopush on;
   tcp_nodelay on;
+
   <% if node[:nginx][:keepalive] == "on" %>
   keepalive_timeout  <%= node[:nginx][:keepalive_timeout] %>;
   <% end %>
-  server_tokens <%= node[:nginx][:server_tokens] %>;
 
-  # server_names_hash_bucket_size <%= node[:nginx][:server_names_hash_bucket_size] %>;
-
-  include <%= node[:nginx][:dir] %>/mime.types;
-  default_type application/octet-stream;
-
-  # With Nginx behind HAProxy, we don't want Nginx's internal ports used in
-  # redirects.
-  server_name_in_redirect off;
-  port_in_redirect off;
-
-  ##
-  # Logging Settings
-  ##
-
-  access_log <%= node[:nginx][:log_dir] %>/access.log;
-
-  ##
-  # Gzip Settings
-  ##
-
-  gzip <%= node[:nginx][:gzip] %>;
+  gzip  <%= node[:nginx][:gzip] %>;
   <% if node[:nginx][:gzip] == "on" %>
   gzip_http_version <%= node[:nginx][:gzip_http_version] %>;
   gzip_comp_level <%= node[:nginx][:gzip_comp_level] %>;
   gzip_proxied <%= node[:nginx][:gzip_proxied] %>;
   gzip_types <%= node[:nginx][:gzip_types].join(' ') %>;
-  <% if node[:nginx][:gzip_disable] %>
-  gzip_disable "<%= node[:nginx][:gzip_disable] %>";
-  <% end %>
   <% end %>
 
-  ##
-  # Virtual Host Configs
-  ##
+  server_names_hash_bucket_size <%= node[:nginx][:server_names_hash_bucket_size] %>;
 
   include <%= node[:nginx][:dir] %>/conf.d/*.conf;
   include <%= node[:nginx][:dir] %>/sites-enabled/*;

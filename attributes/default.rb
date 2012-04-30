@@ -1,50 +1,65 @@
-default[:nginx][:version]      = "0.8.54"
+#
+# Cookbook Name:: nginx
+# Attributes:: default
+#
+# Author:: Adam Jacob (<adam@opscode.com>)
+# Author:: Joshua Timberman (<joshua@opscode.com>)
+#
+# Copyright 2009-2011, Opscode, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
-set[:nginx][:pid_file] = "/var/run/nginx.pid"
+default[:nginx][:version] = "1.0.14"
 
 case platform
 when "debian","ubuntu"
-  set[:nginx][:dir]     = "/etc/nginx"
-  set[:nginx][:log_dir] = "/var/log/nginx"
-  set[:nginx][:user]    = "www-data"
-  set[:nginx][:binary]  = "/usr/sbin/nginx"
+  default[:nginx][:dir]        = "/etc/nginx"
+  default[:nginx][:log_dir]    = "/var/log/nginx"
+  default[:nginx][:user]       = "www-data"
+  default[:nginx][:binary]     = "/usr/sbin/nginx"
+  default[:nginx][:init_style] = "runit"
 else
-  set[:nginx][:dir]     = "/etc/nginx"
-  set[:nginx][:log_dir] = "/var/log/nginx"
-  set[:nginx][:user]    = "nginx"
-  set[:nginx][:binary]  = "/usr/sbin/nginx"
+  default[:nginx][:dir]        = "/etc/nginx"
+  default[:nginx][:log_dir]    = "/var/log/nginx"
+  default[:nginx][:user]       = "www-data"
+  default[:nginx][:binary]     = "/usr/sbin/nginx"
+  default[:nginx][:init_style] = "init"
 end
 
-default[:nginx][:gzip] = "on"
+default[:nginx][:pid] = "/var/run/nginx.pid"
+
+default[:nginx][:gzip]              = "on"
 default[:nginx][:gzip_http_version] = "1.0"
-default[:nginx][:gzip_comp_level] = "2"
-default[:nginx][:gzip_proxied] = "any"
-default[:nginx][:gzip_disable] = nil
-default[:nginx][:gzip_types] = [
+default[:nginx][:gzip_comp_level]   = "2"
+default[:nginx][:gzip_proxied]      = "any"
+default[:nginx][:gzip_types]        = [
   "text/plain",
+  "text/html",
   "text/css",
   "application/x-javascript",
-  "application/json",
   "text/xml",
   "application/xml",
   "application/xml+rss",
-  "text/javascript"
+  "text/javascript",
+  "application/javascript",
+  "application/json"
 ]
 
 default[:nginx][:keepalive]          = "on"
 default[:nginx][:keepalive_timeout]  = 65
 default[:nginx][:worker_processes]   = cpu[:total]
-default[:nginx][:worker_connections] = 2048
+default[:nginx][:worker_connections] = 1024
 default[:nginx][:server_names_hash_bucket_size] = 64
 
-default[:nginx][:server_tokens] = "off"
-
-default[:nginx][:default_site][:enable] = true
-default[:nginx][:default_site][:port] = 80
-default[:nginx][:default_site][:status][:enable] = true
-default[:nginx][:default_site][:status][:allow] = "127.0.0.1";
-default[:nginx][:default_site][:status][:deny] = "all";
-
-# Logrotate Settings
-default[:nginx][:logrotate][:extra_paths] = []
-default[:nginx][:logrotate][:rotate] = 90
+default[:nginx][:disable_access_log] = false

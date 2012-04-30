@@ -4,8 +4,9 @@
 #
 # Author:: Adam Jacob (<adam@opscode.com>)
 # Author:: Joshua Timberman (<joshua@opscode.com>)
+# Author:: Jamie Winsor (<jamie@vialstudios.com>)
 #
-# Copyright 2009-2011, Opscode, Inc.
+# Copyright 2009-2012, Opscode, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,15 +21,13 @@
 # limitations under the License.
 #
 
+node.set[:nginx][:binary]          = "#{node[:nginx][:source][:prefix]}/sbin/nginx"
+node.set[:nginx][:daemon_disable]  = true
+
+include_recipe "nginx::ohai_plugin"
 include_recipe "build-essential"
-include_recipe "iptables::http"
-include_recipe "iptables::https"
-include_recipe "logrotate"
 
-unless platform?("centos","redhat","fedora")
-  include_recipe "runit"
-end
-
+src_filepath  = "#{Chef::Config[:file_cache_path]}/nginx-#{node[:nginx][:version]}.tar.gz"
 packages = value_for_platform(
     ["centos","redhat","fedora"] => {'default' => ['pcre-devel', 'openssl-devel']},
     "default" => ['libpcre3', 'libpcre3-dev', 'libssl-dev']
@@ -38,129 +37,22 @@ packages.each do |devpkg|
   package devpkg
 end
 
-nginx_version = node[:nginx][:version]
-
-node.set[:nginx][:install_path]    = "/opt/nginx"
-node.set[:nginx][:src_binary]      = "#{node[:nginx][:install_path]}/sbin/nginx"
-node.set[:nginx][:configure_flags] = [
-  "--prefix=#{node[:nginx][:install_path]}",
-  "--conf-path=#{node[:nginx][:dir]}/nginx.conf",
-  "--with-http_ssl_module",
-  "--with-http_gzip_static_module",
-  "--with-http_stub_status_module",
-  "--with-http_realip_module",
-]
-
-node.set[:nginx][:default_site][:root] = "#{node.set[:nginx][:install_path]}/html"
-
-configure_flags = node[:nginx][:configure_flags].join(" ")
-
-remote_file "#{Chef::Config[:file_cache_path]}/nginx-#{nginx_version}.tar.gz" do
-  source "http://nginx.org/download/nginx-#{nginx_version}.tar.gz"
-  action :create_if_missing
+remote_file node[:nginx][:source][:url] do
+  source node[:nginx][:source][:url]
+  path src_filepath
+  backup false
 end
-
-# Explicitly uncompress nginx source, regardless of whether or not it needs to
-# be installed, so Passenger can compile against it.
-execute "uncompress_nginx_source" do
-  cwd Chef::Config[:file_cache_path]
-  command "tar zxf nginx-#{nginx_version}.tar.gz"
-  creates "#{Chef::Config[:file_cache_path]}/nginx-#{nginx_version}"
-end
-
-bash "compile_nginx_source" do
-  cwd Chef::Config[:file_cache_path]
-  code <<-EOH
-    cd nginx-#{nginx_version} && ./configure #{configure_flags}
-    make && make install
-  EOH
-  not_if "#{node[:nginx][:src_binary]} -v 2>&1 | grep 'nginx version: nginx/#{::Regexp.escape(nginx_version)}$'"
-
-  # Make sure nginx is running and perform the binary upgrade if necessary.
-  notifies :start, "service[nginx]"
-  notifies :run, "bash[nginx_binary_upgrade]"
-end
-
-# When upgrading nginx between versions, use nginx fanciness to do so without
-# downtime:
-# http://wiki.nginx.org/CommandLine#Upgrading_To_a_New_Binary_On_The_Fly
-bash "nginx_binary_upgrade" do
-  action :nothing
-  code <<-EOH
-    PID_FILE="#{node[:nginx][:pid_file]}"
-    OLDBIN_PID_FILE="${PID_FILE}.oldbin"
-    PID=`cat ${PID_FILE}`
-
-    # Test the config file.
-    #{node[:nginx][:src_binary]} -t -c #{node[:nginx][:dir]}/nginx.conf
-    retval=$?
-    if [[ $retval -ne 0 ]]; then
-      echo $"Error: Nginx configuration invalid. Binary upgrade failed. Manually restart?"
-      exit 1
-    fi
-
-    # Make sure the PID file exists.
-    if [[ ! -f ${PID_FILE} ]];  then
-      echo $"Error: Nginx isn't running. Binary upgrade failed. Manually restart?"
-      exit 1
-    fi
-
-    # Make sure a ".oldbin" PID file isn't already around.
-    if [[ -f ${OLDBIN_PID_FILE} ]];  then
-      echo $"Error: Nginx binary upgrade already in process? Manually restart?"
-      exit 1
-    fi
-
-    # Send USR2 signal to start a new master process
-    echo $"Staring new master nginx..."
-    kill -s USR2 ${PID}
-
-    sleep 1
-
-    # If the new process got started, shutdown the old master with the QUIT
-    # signal.
-    if [[ -f ${OLDBIN_PID_FILE} && -f ${PID_FILE} ]];  then
-      OLDBIN_PID=`cat ${OLDBIN_PID_FILE}`
-
-      echo $"Graceful shutdown of old $prog..."
-      kill -s QUIT ${OLDBIN_PID}
-      exit 0
-    else
-      echo $"Error: Nginx binary upgrade failed. Manually restart?"
-      exit 1
-    fi
-  EOH
-end
-
-group node[:nginx][:user]
 
 user node[:nginx][:user] do
-  comment "Nginx user"
-  shell "/bin/false"
   system true
-  gid node[:nginx][:user]
-  home node[:nginx][:default_site][:root]
+  shell "/bin/false"
+  home "/var/www"
 end
 
 directory node[:nginx][:log_dir] do
   mode 0755
   owner node[:nginx][:user]
   action :create
-end
-
-# Currently we can't enable a custom error log path at the main configuration
-# level for Passenger compatability:
-# http://code.google.com/p/phusion-passenger/issues/detail?id=569#c63
-#
-# So for now, we'll just use the default error log path, but here we'll symlink
-# it to /var/log/nginx/error.log just so it's easier to find.
-file "#{node[:nginx][:log_dir]}/error.log" do
-  action :delete
-  not_if "test -L #{node[:nginx][:log_dir]}/error.log"
-end
-
-link "#{node[:nginx][:log_dir]}/error.log" do
-  to "#{node[:nginx][:install_path]}/logs/error.log"
 end
 
 directory node[:nginx][:dir] do
@@ -173,8 +65,101 @@ end
   directory "#{node[:nginx][:dir]}/#{dir}" do
     owner "root"
     group "root"
-    group(node[:common_writable_group] || "root")
-    mode "0775"
+    mode "0755"
+  end
+end
+
+node.run_state[:nginx_force_recompile] = false
+node.run_state[:nginx_configure_flags] = 
+  node[:nginx][:source][:default_configure_flags] | node[:nginx][:configure_flags]
+
+node[:nginx][:source][:modules].each do |ngx_module|
+  include_recipe "nginx::#{ngx_module}"
+end
+
+configure_flags = node.run_state[:nginx_configure_flags]
+nginx_force_recompile = node.run_state[:nginx_force_recompile]
+
+bash "compile_nginx_source" do
+  cwd ::File.dirname(src_filepath)
+  code <<-EOH
+    tar zxf #{::File.basename(src_filepath)} -C #{::File.dirname(src_filepath)}
+    cd nginx-#{node[:nginx][:version]} && ./configure #{node.run_state[:nginx_configure_flags].join(" ")}
+    make && make install
+  EOH
+  
+  not_if do
+    nginx_force_recompile == false &&
+      node.automatic_attrs[:nginx][:version] == node[:nginx][:version] &&
+      node.automatic_attrs[:nginx][:configure_arguments].sort == configure_flags.sort
+  end
+end
+
+node.run_state.delete(:nginx_configure_flags)
+node.run_state.delete(:nginx_force_recompile)
+
+case node[:nginx][:init_style]
+when "runit"
+  node.set[:nginx][:src_binary] = node[:nginx][:binary]
+  include_recipe "runit"
+
+  runit_service "nginx"
+
+  service "nginx" do
+    supports :status => true, :restart => true, :reload => true
+    reload_command "[[ -f #{node[:nginx][:pid]} ]] && kill -HUP `cat #{node[:nginx][:pid]}` || true"
+  end
+when "bluepill"
+  include_recipe "bluepill"
+
+  template "#{node['bluepill']['conf_dir']}/nginx.pill" do
+    source "nginx.pill.erb"
+    mode 0644
+    variables(
+      :working_dir => node[:nginx][:source][:prefix],
+      :src_binary => node[:nginx][:binary],
+      :nginx_dir => node[:nginx][:dir],
+      :log_dir => node[:nginx][:log_dir],
+      :pid => node[:nginx][:pid]
+    )
+  end
+
+  bluepill_service "nginx" do
+    action [ :enable, :load ]
+  end
+
+  service "nginx" do
+    supports :status => true, :restart => true, :reload => true
+    reload_command "[[ -f #{node[:nginx][:pid]} ]] && kill -HUP `cat #{node[:nginx][:pid]}` || true"
+    action :nothing
+  end
+else
+  node.set[:nginx][:daemon_disable] = false
+  
+  template "/etc/init.d/nginx" do
+    source "nginx.init.erb"
+    owner "root"
+    group "root"
+    mode "0755"
+    variables(
+      :working_dir => node[:nginx][:source][:prefix],
+      :src_binary => node[:nginx][:binary],
+      :nginx_dir => node[:nginx][:dir],
+      :log_dir => node[:nginx][:log_dir],
+      :pid => node[:nginx][:pid]
+    )
+  end
+
+  template "/etc/sysconfig/nginx" do
+    source "nginx.sysconfig.erb"
+    owner "root"
+    group "root"
+    mode "0644"
+  end
+
+  service "nginx" do
+    supports :status => true, :restart => true, :reload => true
+    action :enable
   end
 end
 
@@ -193,7 +178,7 @@ template "nginx.conf" do
   owner "root"
   group "root"
   mode "0644"
-  notifies :reload, "service[nginx]"
+  notifies :reload, resources(:service => "nginx"), :immediately
 end
 
 cookbook_file "#{node[:nginx][:dir]}/mime.types" do
@@ -201,47 +186,9 @@ cookbook_file "#{node[:nginx][:dir]}/mime.types" do
   owner "root"
   group "root"
   mode "0644"
-  notifies :reload, "service[nginx]"
+  notifies :reload, resources(:service => "nginx"), :immediately
 end
 
-include_recipe "nginx::default_site"
-
-unless platform?("centos","redhat","fedora")
-  node.set[:nginx][:daemon_disable] = true
-
-  runit_service "nginx"
-
-  service "nginx"
-else
-  #install init db script
-  template "/etc/init.d/nginx" do
-    source "nginx.init.erb"
-    owner "root"
-    group "root"
-    mode "0755"
-    notifies :restart, "service[nginx]"
-  end
-
-  #install sysconfig file (not really needed but standard)
-  template "/etc/sysconfig/nginx" do
-    source "nginx.sysconfig.erb"
-    owner "root"
-    group "root"
-    mode "0644"
-    notifies :restart, "service[nginx]"
-  end
-
-  #register service
-  service "nginx" do
-    supports :status => true, :restart => true, :reload => true
-    action [:enable, :start]
-  end
-end
-
-logrotate_app "nginx" do
-  path ["#{node[:nginx][:log_dir]}/*.log", "#{node[:nginx][:install_path]}/logs/*.log", node[:nginx][:logrotate][:extra_paths]].flatten
-  frequency "daily"
-  rotate node[:nginx][:logrotate][:rotate]
-  create "644 #{node[:nginx][:user]} root"
-  cookbook "nginx"
+service "nginx" do
+  action :start
 end
