@@ -1,1 +1,8 @@
-NGINX_GLOBAL=<%= node[:nginx][:global] %>
+# Configuration file for the nginx service.
+
+NGINX=<%= node[:nginx][:binary] %>
+CONFFILE=<%= node[:nginx][:dir] %>/nginx.conf
+PIDFILE=<%= node[:nginx][:pid] %>
+
+# Source common environment variables.
+. /etc/nginx/envvars
