@@ -4,7 +4,11 @@ worker_processes  <%= node[:nginx][:worker_processes] %>;
 daemon off;
 <% end -%>
 
-error_log  <%= node[:nginx][:log_dir] %>/error.log;
+# WARNING: Don't enable this custom error log at this main configuration level.
+# Doing so currently seems to cause issues with Passneger reloading at least on
+# our systems:
+# http://code.google.com/p/phusion-passenger/issues/detail?id=569#c63
+# error_log  <%= node[:nginx][:log_dir] %>/error.log;
 pid        <%= node[:nginx][:pid] %>;
 
 events {
