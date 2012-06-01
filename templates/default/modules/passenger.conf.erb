@@ -1,7 +1,20 @@
 # General
 passenger_root <%= node[:passenger][:root_path] %>;
 <% if(node.recipe?("rbenv::system_install")) %>
-passenger_ruby <%= node[:rbenv][:install_prefix] %>/rbenv/shims/ruby;
+# FIXME? Passenger in Nginx is randomly dieing with weird errors like:
+#
+# pwd: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory
+# shell-init: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory
+#
+# The only thing I can think is that we're referring to our Rails app paths
+# dusing the "current" symlink, but we've done that in our other
+# nginx/Passenger deployemnts. The only difference seems to be rbenv instead of
+# rvm. Since I can't reproduce the problem reliably, let's try pointing
+# directly to the ruby binary, rather than the shim for a while to see if that
+# does the trick (although I'm not sure if the shim is needed to correctly
+# setup environment stuff.. we'll see).
+#passenger_ruby <%= node[:rbenv][:install_prefix] %>/rbenv/shims/ruby;
+passenger_ruby <%= node[:rbenv][:install_prefix] %>/rbenv/versions/<%= node[:rbenv][:install_global_version] %>/bin/ruby;
 <% else %>
 passenger_ruby <%= node[:languages][:ruby][:ruby_bin] %>;
 <% end %>
@@ -51,3 +64,7 @@ passenger_set_cgi_param LD_LIBRARY_PATH "<%= node[:oracle_instantclient][:path] 
 passenger_set_cgi_param ORACLE_HOME "<%= node[:oracle_instantclient][:path] %>";
 passenger_set_cgi_param TNS_ADMIN "<%= node[:oracle_instantclient][:path] %>";
 <% end -%>
+
+# Per Cyber Security: Disable showing the specific version of Passenger
+# running.
+passenger_show_version_in_header off;
