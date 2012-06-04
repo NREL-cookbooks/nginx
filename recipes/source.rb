@@ -63,6 +63,8 @@ user node[:nginx][:user] do
   system true
   shell "/bin/false"
   home "/var/www"
+  # Don't alter existing users (so pre-existing "vagrant" user can be used).
+  not_if { Etc.getpwnam(node[:nginx][:user]) rescue false }
 end
 
 node.run_state[:nginx_force_recompile] = false
