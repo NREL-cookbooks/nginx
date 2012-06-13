@@ -25,18 +25,12 @@
 nginx_url = node[:nginx][:source][:url] ||
   "http://nginx.org/download/nginx-#{node[:nginx][:version]}.tar.gz"
 
-unless(node[:nginx][:source][:prefix])
-  node.set[:nginx][:source][:prefix] = "/opt/nginx-#{node[:nginx][:version]}"
-end
-unless(node[:nginx][:source][:conf_path])
-  node.set[:nginx][:source][:conf_path] = "#{node[:nginx][:dir]}/nginx.conf"
-end
-unless(node[:nginx][:source][:default_configure_flags])
-  node.set[:nginx][:source][:default_configure_flags] = [
-    "--prefix=#{node[:nginx][:source][:prefix]}",
-    "--conf-path=#{node[:nginx][:dir]}/nginx.conf"
-  ]
-end
+node.set[:nginx][:source][:prefix] = "/opt/nginx-#{node[:nginx][:version]}"
+node.set[:nginx][:source][:conf_path] = "#{node[:nginx][:dir]}/nginx.conf"
+node.set[:nginx][:source][:default_configure_flags] = [
+  "--prefix=#{node[:nginx][:source][:prefix]}",
+  "--conf-path=#{node[:nginx][:dir]}/nginx.conf"
+]
 node.set[:nginx][:binary]          = "#{node[:nginx][:source][:prefix]}/sbin/nginx"
 node.set[:nginx][:daemon_disable]  = true
 
