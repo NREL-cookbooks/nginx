@@ -32,6 +32,10 @@ http {
   keepalive_timeout  <%= node[:nginx][:keepalive_timeout] %>;
   <% end %>
 
+  <% if node[:nginx][:large_client_header_buffers] %>
+  large_client_header_buffers <%= node[:nginx][:large_client_header_buffers] %>;
+  <% end %>
+
   gzip  <%= node[:nginx][:gzip] %>;
   <% if node[:nginx][:gzip] == "on" %>
   gzip_http_version <%= node[:nginx][:gzip_http_version] %>;
