@@ -1,3 +1,5 @@
+include_recipe "logrotate"
+
 directory node[:nginx][:dir] do
   owner "root"
   group "root"
@@ -62,3 +64,11 @@ template "#{node[:nginx][:dir]}/sites-available/default" do
 end
 
 nginx_site 'default'
+
+logrotate_app "nginx" do
+  path ["#{node[:nginx][:log_dir]}/*.log", node[:nginx][:logrotate][:extra_paths]].flatten
+  frequency "daily"
+  rotate node[:nginx][:logrotate][:rotate]
+  create "644 #{node[:nginx][:user]} root"
+  cookbook "nginx"
+end

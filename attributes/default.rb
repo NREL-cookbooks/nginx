@@ -65,3 +65,7 @@ default[:nginx][:server_names_hash_bucket_size] = 64
 default[:nginx][:disable_access_log] = false
 
 default[:nginx][:listen] = 80
+
+# Logrotate Settings
+default[:nginx][:logrotate][:extra_paths] = []
+default[:nginx][:logrotate][:rotate] = 90
