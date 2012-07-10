@@ -1,6 +1,6 @@
 server {
   listen <%= node[:nginx][:listen] %> default_server;
-  server_name  default.<%= node[:hostname] %>;
+  server_name _;
 
   access_log  <%= node[:nginx][:log_dir] %>/localhost.access.log;
 

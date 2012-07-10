@@ -185,7 +185,8 @@ else
 end
 
 execute "nginx_binary_upgrade" do
-  command "/etc/init.d/nginx upgrade"
+  # command "/etc/init.d/nginx upgrade"
+  command "/etc/init.d/nginx restart"
   action :nothing
 end
 
