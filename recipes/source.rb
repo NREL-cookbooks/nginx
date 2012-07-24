@@ -74,11 +74,26 @@ directory node[:nginx][:dir] do
   group "root"
   mode "0755"
 end
+%w(sites-available sites-enabled).each do |dir|
+  directory "#{node[:nginx][:dir]}/#{dir}" do
+    owner "root"
+    group(node[:common_writable_group] || "root")
+    mode "0775"
+  end
+end
 %w(conf.d).each do |leaf|
   directory File.join(node[:nginx][:dir], leaf) do
     owner "root"
     group "root"
     mode "0755"
+  end
+end
+%w{nxensite nxdissite}.each do |nxscript|
+  template "/usr/sbin/#{nxscript}" do
+    source "#{nxscript}.erb"
+    mode "0755"
+    owner "root"
+    group "root"
   end
 end
 
@@ -190,14 +205,6 @@ execute "nginx_binary_upgrade" do
   action :nothing
 end
 
-%w{nxensite nxdissite}.each do |nxscript|
-  template "/usr/sbin/#{nxscript}" do
-    source "#{nxscript}.erb"
-    mode "0755"
-    owner "root"
-    group "root"
-  end
-end
 
 include_recipe 'nginx::commons'
 
