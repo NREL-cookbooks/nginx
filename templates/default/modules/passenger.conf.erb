@@ -1,0 +1,70 @@
+# General
+passenger_root <%= node[:passenger][:root_path] %>;
+<% if(node.recipe?("rbenv::system_install")) %>
+# FIXME? Passenger in Nginx is randomly dieing with weird errors like:
+#
+# pwd: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory
+# shell-init: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory
+#
+# The only thing I can think is that we're referring to our Rails app paths
+# dusing the "current" symlink, but we've done that in our other
+# nginx/Passenger deployemnts. The only difference seems to be rbenv instead of
+# rvm. Since I can't reproduce the problem reliably, let's try pointing
+# directly to the ruby binary, rather than the shim for a while to see if that
+# does the trick (although I'm not sure if the shim is needed to correctly
+# setup environment stuff.. we'll see).
+#passenger_ruby <%= node[:rbenv][:install_prefix] %>/rbenv/shims/ruby;
+passenger_ruby <%= node[:rbenv][:install_prefix] %>/rbenv/versions/<%= node[:rbenv][:install_global_version] %>/bin/ruby;
+<% else %>
+passenger_ruby <%= node[:languages][:ruby][:ruby_bin] %>;
+<% end %>
+passenger_spawn_method <%= node[:passenger][:spawn_method] %>;
+passenger_use_global_queue <%= if(node[:passenger][:use_global_queue]) then "on" else "off" end %>;
+
+# Security
+passenger_user_switching <%= if(node[:passenger][:user_switching]) then "on" else "off" end %>;
+passenger_default_user <%= node[:nginx][:user] %>;
+<% if node[:passenger][:default_group] -%>
+Passenger_default_group <%= node[:passenger][:default_group] %>;
+<% end -%>
+passenger_friendly_error_pages <%= if(node[:passenger][:friendly_error_pages]) then "on" else "off" end %>;
+
+# Resource control and optimization
+passenger_max_pool_size <%= node[:passenger][:max_pool_size] %>;
+passenger_min_instances <%= node[:passenger][:min_instances] %>;
+passenger_max_instances_per_app <%= node[:passenger][:max_instances_per_app] %>;
+passenger_pool_idle_time <%= node[:passenger][:pool_idle_time] %>;
+<% node[:passenger][:pre_start_urls].each do |url| -%>
+passenger_pre_start <%= url %>;
+<% end -%>
+
+# Logging and debugging
+passenger_log_level <%= node[:passenger][:log_level] %>;
+<% if node[:passenger][:debug_log_file] -%>
+passenger_debug_log_file <%= node[:passenger][:debug_log_file] %>;
+<% end -%>
+
+# Ruby on Rails-specific
+<% if node[:passenger][:rails_base_uri] -%>
+passenger_base_uri <%= node[:passenger][:rails_base_uri] %>;
+<% end -%>
+rails_env <%= node[:passenger][:rails_env] %>;
+rails_framework_spawner_idle_time <%= node[:passenger][:rails_framework_spawner_idle_time] %>;
+rails_app_spawner_idle_time <%= node[:passenger][:rails_app_spawner_idle_time] %>;
+
+# Rack-specific
+<% if node[:passenger][:rack_base_uri] -%>
+passenger_base_uri <%= node[:passenger][:rack_base_uri] %>;
+<% end -%>
+# rack_env <%= node[:passenger][:rack_env] %>;
+
+# Environment Variables
+<% if(node.recipe?("oracle_instantclient")) -%>
+passenger_set_cgi_param LD_LIBRARY_PATH "<%= node[:oracle_instantclient][:path] %>";
+passenger_set_cgi_param ORACLE_HOME "<%= node[:oracle_instantclient][:path] %>";
+passenger_set_cgi_param TNS_ADMIN "<%= node[:oracle_instantclient][:path] %>";
+<% end -%>
+
+# Per Cyber Security: Disable showing the specific version of Passenger
+# running.
+passenger_show_version_in_header off;

@@ -46,7 +46,6 @@ default[:nginx][:gzip_comp_level]   = "2"
 default[:nginx][:gzip_proxied]      = "any"
 default[:nginx][:gzip_types]        = [
   "text/plain",
-  "text/html",
   "text/css",
   "application/x-javascript",
   "text/xml",
@@ -64,3 +63,9 @@ default[:nginx][:worker_connections] = 1024
 default[:nginx][:server_names_hash_bucket_size] = 64
 
 default[:nginx][:disable_access_log] = false
+
+default[:nginx][:listen] = 80
+
+# Logrotate Settings
+default[:nginx][:logrotate][:extra_paths] = []
+default[:nginx][:logrotate][:rotate] = 90

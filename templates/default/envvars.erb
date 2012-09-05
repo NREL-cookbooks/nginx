@@ -1,0 +1,10 @@
+<% if(node.recipe?("rbenv")) -%>
+export RBENV_ROOT=<%= node[:rbenv][:install_prefix] %>/rbenv
+export PATH=$RBENV_ROOT/bin:$PATH
+<% end -%>
+
+<% if(node.recipe?("oracle_instantclient")) -%>
+export LD_LIBRARY_PATH=<%= node[:oracle_instantclient][:path] %>
+export ORACLE_HOME=<%= node[:oracle_instantclient][:path] %>
+export TNS_ADMIN=<%= node[:oracle_instantclient][:path] %>
+<% end -%>

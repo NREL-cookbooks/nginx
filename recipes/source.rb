@@ -25,18 +25,12 @@
 nginx_url = node[:nginx][:source][:url] ||
   "http://nginx.org/download/nginx-#{node[:nginx][:version]}.tar.gz"
 
-unless(node[:nginx][:source][:prefix])
-  node.set[:nginx][:source][:prefix] = "/opt/nginx-#{node[:nginx][:version]}"
-end
-unless(node[:nginx][:source][:conf_path])
-  node.set[:nginx][:source][:conf_path] = "#{node[:nginx][:dir]}/nginx.conf"
-end
-unless(node[:nginx][:source][:default_configure_flags])
-  node.set[:nginx][:source][:default_configure_flags] = [
-    "--prefix=#{node[:nginx][:source][:prefix]}",
-    "--conf-path=#{node[:nginx][:dir]}/nginx.conf"
-  ]
-end
+node.set[:nginx][:source][:prefix] = "/opt/nginx-#{node[:nginx][:version]}"
+node.set[:nginx][:source][:conf_path] = "#{node[:nginx][:dir]}/nginx.conf"
+node.set[:nginx][:source][:default_configure_flags] = [
+  "--prefix=#{node[:nginx][:source][:prefix]}",
+  "--conf-path=#{node[:nginx][:dir]}/nginx.conf"
+]
 node.set[:nginx][:binary]          = "#{node[:nginx][:source][:prefix]}/sbin/nginx"
 node.set[:nginx][:daemon_disable]  = true
 
@@ -63,11 +57,45 @@ user node[:nginx][:user] do
   system true
   shell "/bin/false"
   home "/var/www"
+  # Don't alter existing users (so pre-existing "vagrant" user can be used).
+  not_if { Etc.getpwnam(node[:nginx][:user]) rescue false }
 end
 
 node.run_state[:nginx_force_recompile] = false
 node.run_state[:nginx_configure_flags] = 
   node[:nginx][:source][:default_configure_flags] | node[:nginx][:configure_flags]
+
+# FIXME: Create the nginx directories that other module recipes might install
+# files into. This is also done in the nginx::commons recipe, but that gets
+# called too late on the first run, so I imagine this will be sorted out at
+# some point in the base recipe.
+directory node[:nginx][:dir] do
+  owner "root"
+  group "root"
+  mode "0755"
+end
+%w(sites-available sites-enabled).each do |dir|
+  directory "#{node[:nginx][:dir]}/#{dir}" do
+    owner "root"
+    group(node[:common_writable_group] || "root")
+    mode "0775"
+  end
+end
+%w(conf.d).each do |leaf|
+  directory File.join(node[:nginx][:dir], leaf) do
+    owner "root"
+    group "root"
+    mode "0755"
+  end
+end
+%w{nxensite nxdissite}.each do |nxscript|
+  template "/usr/sbin/#{nxscript}" do
+    source "#{nxscript}.erb"
+    mode "0755"
+    owner "root"
+    group "root"
+  end
+end
 
 node[:nginx][:source][:modules].each do |ngx_module|
   include_recipe "nginx::#{ngx_module}"
@@ -81,14 +109,18 @@ bash "compile_nginx_source" do
   code <<-EOH
     tar zxf #{::File.basename(src_filepath)} -C #{::File.dirname(src_filepath)}
     cd nginx-#{node[:nginx][:version]} && ./configure #{node.run_state[:nginx_configure_flags].join(" ")}
-    make && make install
+    make && make install && rm -f #{node[:nginx][:dir]}/nginx.conf
   EOH
   
   not_if do
     nginx_force_recompile == false &&
-      node.automatic_attrs[:nginx][:version] == node[:nginx][:version] &&
+      node.automatic_attrs[:nginx][:installed_version] == node[:nginx][:version] &&
       node.automatic_attrs[:nginx][:configure_arguments].sort == configure_flags.sort
   end
+
+  # Make sure nginx is running and perform the binary upgrade if necessary.
+  notifies :start, "service[nginx]"
+  notifies :run, "execute[nginx_binary_upgrade]"
 end
 
 node.run_state.delete(:nginx_configure_flags)
@@ -146,6 +178,14 @@ else
     )
   end
 
+  template "#{node[:nginx][:dir]}/envvars" do
+    source "envvars.erb"
+    group "root"
+    owner "root"
+    mode 0644
+    notifies :reload, "service[nginx]"
+  end
+
   template "/etc/sysconfig/nginx" do
     source "nginx.sysconfig.erb"
     owner "root"
@@ -159,14 +199,12 @@ else
   end
 end
 
-%w{nxensite nxdissite}.each do |nxscript|
-  template "/usr/sbin/#{nxscript}" do
-    source "#{nxscript}.erb"
-    mode "0755"
-    owner "root"
-    group "root"
-  end
+execute "nginx_binary_upgrade" do
+  # command "/etc/init.d/nginx upgrade"
+  command "/etc/init.d/nginx restart"
+  action :nothing
 end
+
 
 include_recipe 'nginx::commons'
 

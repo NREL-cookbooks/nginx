@@ -4,7 +4,11 @@ worker_processes  <%= node[:nginx][:worker_processes] %>;
 daemon off;
 <% end -%>
 
-error_log  <%= node[:nginx][:log_dir] %>/error.log;
+# WARNING: Don't enable this custom error log at this main configuration level.
+# Doing so currently seems to cause issues with Passneger reloading at least on
+# our systems:
+# http://code.google.com/p/phusion-passenger/issues/detail?id=569#c63
+# error_log  <%= node[:nginx][:log_dir] %>/error.log;
 pid        <%= node[:nginx][:pid] %>;
 
 events {
@@ -15,6 +19,7 @@ http {
   include       <%= node[:nginx][:dir] %>/mime.types;
   default_type  application/octet-stream;
 
+  error_log <%= node[:nginx][:log_dir] %>/error.log;
   <% unless node[:nginx][:disable_access_log] -%>
   access_log	<%= node[:nginx][:log_dir] %>/access.log;
   <% end %>
@@ -25,6 +30,10 @@ http {
 
   <% if node[:nginx][:keepalive] == "on" %>
   keepalive_timeout  <%= node[:nginx][:keepalive_timeout] %>;
+  <% end %>
+
+  <% if node[:nginx][:large_client_header_buffers] %>
+  large_client_header_buffers <%= node[:nginx][:large_client_header_buffers] %>;
   <% end %>
 
   gzip  <%= node[:nginx][:gzip] %>;
