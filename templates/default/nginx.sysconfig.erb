@@ -1,5 +1,6 @@
 # Configuration file for the nginx service.
 
+NGINX_GLOBAL=<%= node['nginx']['global'] %>
 NGINX=<%= node[:nginx][:binary] %>
 CONFFILE=<%= node[:nginx][:dir] %>/nginx.conf
 PIDFILE=<%= node[:nginx][:pid] %>

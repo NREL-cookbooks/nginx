@@ -2,7 +2,7 @@ server {
   listen <%= node[:nginx][:listen] %> default_server;
   server_name _;
 
-  access_log  <%= node[:nginx][:log_dir] %>/localhost.access.log;
+  access_log  <%= node['nginx']['log_dir'] %>/localhost.access.log;
 
   location / {
     root   /var/www/nginx-default;

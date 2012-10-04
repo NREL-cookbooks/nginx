@@ -17,4 +17,4 @@ template "#{node[:nginx][:dir]}/conf.d/passenger.conf" do
   notifies :reload, "service[nginx]"
 end
 
-node.run_state[:nginx_configure_flags] = node.run_state[:nginx_configure_flags] | ["--add-module=#{node[:passenger][:root_path]}/ext/nginx", "--with-cc-opt=-Wno-error"]
+node.run_state['nginx_configure_flags'] = node.run_state['nginx_configure_flags'] | ["--add-module=#{node[:passenger][:root_path]}/ext/nginx", "--with-cc-opt=-Wno-error"]
