@@ -1,6 +1,6 @@
 # General
 passenger_root <%= node[:passenger][:root_path] %>;
-<% if(node.recipe?("rbenv::system_install")) %>
+<% if(node.recipe?("rbenv::global_version") || node.recipe?("rbenv::system_install")) %>
 # FIXME? Passenger in Nginx is randomly dieing with weird errors like:
 #
 # pwd: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory
