@@ -7,6 +7,8 @@
 # All rights reserved - Do Not Redistribute
 #
 
+package "openldap-devel"
+
 src_filename = "nginx-auth-ldap-#{node['nginx']['auth_ldap']['version']}.tar.gz"
 src_filepath = "#{Chef::Config['file_cache_path']}/#{src_filename}"
 extract_path = "#{Chef::Config['file_cache_path']}/nginx_auth_ldap_module-#{node['nginx']['auth_ldap']['version']}/#{node['nginx']['auth_ldap']['checksum']}"
