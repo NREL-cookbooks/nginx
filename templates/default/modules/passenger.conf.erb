@@ -1,5 +1,5 @@
 # General
-passenger_root <%= node[:passenger][:root_path] %>;
+passenger_root <%= @passenger_root %>;
 <% if(node.recipe?("rbenv::global_version") || node.recipe?("rbenv::system_install")) %>
 # FIXME? Passenger in Nginx is randomly dieing with weird errors like:
 #
@@ -14,49 +14,54 @@ passenger_root <%= node[:passenger][:root_path] %>;
 # does the trick (although I'm not sure if the shim is needed to correctly
 # setup environment stuff.. we'll see).
 #passenger_ruby <%= node[:rbenv][:install_prefix] %>/rbenv/shims/ruby;
-passenger_ruby <%= node[:rbenv][:install_prefix] %>/rbenv/versions/<%= node[:rbenv][:install_global_version] %>/bin/ruby;
+#passenger_ruby <%= node[:rbenv][:install_prefix] %>/rbenv/versions/<%= node[:rbenv][:install_global_version] %>/bin/ruby;
+passenger_ruby <%= @passenger_ruby %>;
 <% else %>
-passenger_ruby <%= node[:languages][:ruby][:ruby_bin] %>;
+passenger_ruby <%= @passenger_ruby %>;
 <% end %>
-passenger_spawn_method <%= node[:passenger][:spawn_method] %>;
-passenger_use_global_queue <%= if(node[:passenger][:use_global_queue]) then "on" else "off" end %>;
+passenger_spawn_method <%= @passenger_spawn_method %>;
+passenger_use_global_queue <%= @passenger_use_global_queue %>;
+
+# Connection handling
+passenger_buffer_response <%= @passenger_buffer_response %>;
 
 # Security
-passenger_user_switching <%= if(node[:passenger][:user_switching]) then "on" else "off" end %>;
+passenger_user_switching <%= if(node[:nginx][:passenger][:user_switching]) then "on" else "off" end %>;
 passenger_default_user <%= node[:nginx][:user] %>;
-<% if node[:passenger][:default_group] -%>
-Passenger_default_group <%= node[:passenger][:default_group] %>;
+<% if node[:nginx][:passenger][:default_group] -%>
+Passenger_default_group <%= node[:nginx][:passenger][:default_group] %>;
 <% end -%>
-passenger_friendly_error_pages <%= if(node[:passenger][:friendly_error_pages]) then "on" else "off" end %>;
+passenger_friendly_error_pages <%= if(node[:nginx][:passenger][:friendly_error_pages]) then "on" else "off" end %>;
 
 # Resource control and optimization
-passenger_max_pool_size <%= node[:passenger][:max_pool_size] %>;
-passenger_min_instances <%= node[:passenger][:min_instances] %>;
-passenger_max_instances_per_app <%= node[:passenger][:max_instances_per_app] %>;
-passenger_pool_idle_time <%= node[:passenger][:pool_idle_time] %>;
-<% node[:passenger][:pre_start_urls].each do |url| -%>
+passenger_max_pool_size <%= @passenger_max_pool_size %>;
+passenger_min_instances <%= @passenger_min_instances %>;
+passenger_max_instances_per_app <%= @passenger_max_instances_per_app %>;
+passenger_pool_idle_time <%= @passenger_pool_idle_time %>;
+passenger_max_requests <%= @passenger_max_requests %>;
+<% node[:nginx][:passenger][:pre_start_urls].each do |url| -%>
 passenger_pre_start <%= url %>;
 <% end -%>
 
 # Logging and debugging
-passenger_log_level <%= node[:passenger][:log_level] %>;
-<% if node[:passenger][:debug_log_file] -%>
-passenger_debug_log_file <%= node[:passenger][:debug_log_file] %>;
+passenger_log_level <%= node[:nginx][:passenger][:log_level] %>;
+<% if node[:nginx][:passenger][:debug_log_file] -%>
+passenger_debug_log_file <%= node[:nginx][:passenger][:debug_log_file] %>;
 <% end -%>
 
 # Ruby on Rails-specific
-<% if node[:passenger][:rails_base_uri] -%>
-passenger_base_uri <%= node[:passenger][:rails_base_uri] %>;
+<% if node[:nginx][:passenger][:rails_base_uri] -%>
+passenger_base_uri <%= node[:nginx][:passenger][:rails_base_uri] %>;
 <% end -%>
-rails_env <%= node[:passenger][:rails_env] %>;
-rails_framework_spawner_idle_time <%= node[:passenger][:rails_framework_spawner_idle_time] %>;
-rails_app_spawner_idle_time <%= node[:passenger][:rails_app_spawner_idle_time] %>;
+rails_env <%= node[:nginx][:passenger][:rails_env] %>;
+rails_framework_spawner_idle_time <%= node[:nginx][:passenger][:rails_framework_spawner_idle_time] %>;
+rails_app_spawner_idle_time <%= node[:nginx][:passenger][:rails_app_spawner_idle_time] %>;
 
 # Rack-specific
-<% if node[:passenger][:rack_base_uri] -%>
-passenger_base_uri <%= node[:passenger][:rack_base_uri] %>;
+<% if node[:nginx][:passenger][:rack_base_uri] -%>
+passenger_base_uri <%= node[:nginx][:passenger][:rack_base_uri] %>;
 <% end -%>
-# rack_env <%= node[:passenger][:rack_env] %>;
+# rack_env <%= node[:nginx][:passenger][:rack_env] %>;
 
 # Environment Variables
 <% if(node.recipe?("oracle_instantclient")) -%>

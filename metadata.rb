@@ -1,8 +1,9 @@
+name              "nginx"
 maintainer        "Opscode, Inc."
 maintainer_email  "cookbooks@opscode.com"
 license           "Apache 2.0"
 description       "Installs and configures nginx"
-version           "1.0.1"
+version           "1.4.0"
 
 recipe "nginx", "Installs nginx package and sets up configuration with Debian apache style with sites-enabled/sites-available"
 recipe "nginx::source", "Installs nginx from source and sets up configuration with Debian apache style with sites-enabled/sites-available"
@@ -11,11 +12,17 @@ recipe "nginx::source", "Installs nginx from source and sets up configuration wi
   supports os
 end
 
-%w{ build-essential runit bluepill yum logrotate passenger }.each do |cb|
+%w{ build-essential yum apt logrotate passenger }.each do |cb|
   depends cb
 end
 
-depends 'ohai', '~> 1.0.2'
+depends 'ohai', '>= 1.1.4'
+
+%w{ bluepill }.each do |cb|
+  recommends cb
+end
+
+recommends "runit", "<= 0.16.2"
 
 attribute "nginx/dir",
   :display_name => "Nginx Directory",
@@ -86,6 +93,14 @@ attribute "nginx/server_names_hash_bucket_size",
   :display_name => "Nginx Server Names Hash Bucket Size",
   :default => "64"
 
+attribute "nginx/types_hash_max_size",
+  :display_name => "Nginx Types Hash Max Size",
+  :default => "2048"
+
+attribute "nginx/types_hash_bucket_size",
+  :display_name => "Nginx Types Hash Bucket Size",
+  :default => "64"
+
 attribute "nginx/disable_access_log",
   :display_name => "Disable Access Log",
   :default => "false"
@@ -93,3 +108,8 @@ attribute "nginx/disable_access_log",
 attribute "nginx/default_site_enabled",
   :display_name => "Default site enabled",
   :default => "true"
+
+attribute "nginx/sendfile",
+  :display_name => "Nginx sendfile",
+  :description => "Whether to enable sendfile",
+  :default => "on"
