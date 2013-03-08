@@ -3,14 +3,6 @@ include_recipe "logrotate"
 include_recipe "nginx::commons_dir"
 include_recipe "nginx::commons_conf"
 
-%w(sites-available sites-enabled).each do |dir|
-  directory "#{node[:nginx][:dir]}/#{dir}" do
-    owner "root"
-    group(node[:common_writable_group] || "root")
-    mode "0775"
-  end
-end
-
 %w{ fastcgi_params scgi_params uwsgi_params envvars }.each do |param_file|
   template "#{node[:nginx][:dir]}/#{param_file}" do
     source "#{param_file}.erb"

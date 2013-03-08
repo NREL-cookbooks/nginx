@@ -32,10 +32,18 @@ directory node['nginx']['log_dir'] do
   recursive true
 end
 
-%w(sites-available sites-enabled conf.d).each do |leaf|
+%w(conf.d).each do |leaf|
   directory File.join(node['nginx']['dir'], leaf) do
     owner "root"
     group "root"
     mode 00755
+  end
+end
+
+%w(sites-available sites-enabled).each do |leaf|
+  directory File.join(node['nginx']['dir'], leaf) do
+    owner "root"
+    group(node[:common_writable_group] || "root")
+    mode 00775
   end
 end
