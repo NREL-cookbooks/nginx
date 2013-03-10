@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 
+include_recipe "rbenv::system"
+
 node.default["nginx"]["passenger"]["version"] = "3.0.19"
 
 if node["languages"].attribute?("ruby")
