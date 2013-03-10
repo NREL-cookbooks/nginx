@@ -1,24 +1,6 @@
 # General
 passenger_root <%= @passenger_root %>;
-<% if(node.recipe?("rbenv::global_version") || node.recipe?("rbenv::system_install")) %>
-# FIXME? Passenger in Nginx is randomly dieing with weird errors like:
-#
-# pwd: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory
-# shell-init: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory
-#
-# The only thing I can think is that we're referring to our Rails app paths
-# dusing the "current" symlink, but we've done that in our other
-# nginx/Passenger deployemnts. The only difference seems to be rbenv instead of
-# rvm. Since I can't reproduce the problem reliably, let's try pointing
-# directly to the ruby binary, rather than the shim for a while to see if that
-# does the trick (although I'm not sure if the shim is needed to correctly
-# setup environment stuff.. we'll see).
-#passenger_ruby <%= node[:rbenv][:install_prefix] %>/rbenv/shims/ruby;
-#passenger_ruby <%= node[:rbenv][:install_prefix] %>/rbenv/versions/<%= node[:rbenv][:install_global_version] %>/bin/ruby;
 passenger_ruby <%= @passenger_ruby %>;
-<% else %>
-passenger_ruby <%= @passenger_ruby %>;
-<% end %>
 passenger_spawn_method <%= @passenger_spawn_method %>;
 passenger_use_global_queue <%= @passenger_use_global_queue %>;
 
