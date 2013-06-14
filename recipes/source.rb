@@ -26,7 +26,7 @@
 node.load_attribute_by_short_filename('source', 'nginx') if node.respond_to?(:load_attribute_by_short_filename)
 
 nginx_url = node['nginx']['source']['url'] ||
-  "http://nginx.org/download/nginx-#{node['nginx']['version']}.tar.gz"
+  "http://nginx.org/download/nginx-#{node['nginx']['source']['version']}.tar.gz"
 
 node.set['nginx']['binary']          = node['nginx']['source']['sbin_path']
 node.set['nginx']['daemon_disable']  = true
@@ -44,7 +44,7 @@ include_recipe "nginx::commons_dir"
 include_recipe "nginx::commons_script"
 include_recipe "build-essential"
 
-src_filepath  = "#{Chef::Config['file_cache_path'] || '/tmp'}/nginx-#{node['nginx']['version']}.tar.gz"
+src_filepath  = "#{Chef::Config['file_cache_path'] || '/tmp'}/nginx-#{node['nginx']['source']['version']}.tar.gz"
 packages = value_for_platform(
     ["centos","redhat","fedora","amazon","scientific"] => {'default' => ['pcre-devel', 'openssl-devel']},
     "gentoo" => {"default" => []},
@@ -65,6 +65,43 @@ end
 node.run_state['nginx_force_recompile'] = false
 node.run_state['nginx_configure_flags'] =
   node['nginx']['source']['default_configure_flags'] | node['nginx']['configure_flags']
+
+include_recipe "nginx::commons_conf"
+include_recipe "nginx::commons_custom"
+
+cookbook_file "#{node['nginx']['dir']}/mime.types" do
+  source "mime.types"
+  owner "root"
+  group "root"
+  mode 00644
+  notifies :reload, 'service[nginx]'
+end
+
+node['nginx']['source']['modules'].each do |ngx_module|
+  include_recipe "nginx::#{ngx_module}"
+end
+
+configure_flags = node.run_state['nginx_configure_flags']
+nginx_force_recompile = node.run_state['nginx_force_recompile']
+
+bash "compile_nginx_source" do
+  cwd ::File.dirname(src_filepath)
+  code <<-EOH
+    tar zxf #{::File.basename(src_filepath)} -C #{::File.dirname(src_filepath)} &&
+    cd nginx-#{node['nginx']['source']['version']} &&
+    ./configure #{node.run_state['nginx_configure_flags'].join(" ")} &&
+    make && make install
+  EOH
+
+  not_if do
+    nginx_force_recompile == false &&
+      node.automatic_attrs['nginx'] &&
+      node.automatic_attrs['nginx']['version'] == node['nginx']['source']['version'] &&
+      node.automatic_attrs['nginx']['configure_arguments'].sort == configure_flags.sort
+  end
+
+  notifies :restart, "service[nginx]"
+end
 
 case node['nginx']['init_style']
 when "runit"
@@ -99,6 +136,31 @@ when "bluepill"
   service "nginx" do
     supports :status => true, :restart => true, :reload => true
     reload_command "[[ -f #{node['nginx']['pid']} ]] && kill -HUP `cat #{node['nginx']['pid']}` || true"
+    action :nothing
+  end
+when 'upstart'
+  # we rely on this to set up nginx.conf with daemon disable instead of doing
+  # it in the upstart init script.
+  node.set['nginx']['daemon_disable']  = node['nginx']['upstart']['foreground']
+
+  template '/etc/init/nginx.conf' do
+    source 'nginx-upstart.conf.erb'
+    owner 'root'
+    group 'root'
+    mode 00644
+    variables(
+      :src_binary => node['nginx']['binary'],
+      :pid => node['nginx']['pid'],
+      :config => node['nginx']['source']['conf_path'],
+      :foreground => node['nginx']['upstart']['foreground'],
+      :respawn_limit => node['nginx']['upstart']['respawn_limit'],
+      :runlevels => node['nginx']['upstart']['runlevels']
+    )
+  end
+
+  service "nginx" do
+    provider Chef::Provider::Service::Upstart
+    supports :status => true, :restart => true, :reload => true
     action :nothing
   end
 else
@@ -139,43 +201,6 @@ else
     supports :status => true, :restart => true, :reload => true
     action :enable
   end
-end
-
-include_recipe "nginx::commons_conf"
-include_recipe "nginx::commons_custom"
-
-cookbook_file "#{node['nginx']['dir']}/mime.types" do
-  source "mime.types"
-  owner "root"
-  group "root"
-  mode 00644
-  notifies :reload, 'service[nginx]'
-end
-
-node['nginx']['source']['modules'].each do |ngx_module|
-  include_recipe "nginx::#{ngx_module}"
-end
-
-configure_flags = node.run_state['nginx_configure_flags']
-nginx_force_recompile = node.run_state['nginx_force_recompile']
-
-bash "compile_nginx_source" do
-  cwd ::File.dirname(src_filepath)
-  code <<-EOH
-    tar zxf #{::File.basename(src_filepath)} -C #{::File.dirname(src_filepath)} &&
-    cd nginx-#{node['nginx']['version']} &&
-    ./configure #{node.run_state['nginx_configure_flags'].join(" ")} &&
-    make && make install
-  EOH
-
-  not_if do
-    nginx_force_recompile == false &&
-      node.automatic_attrs['nginx'] &&
-      node.automatic_attrs['nginx']['version'] == node['nginx']['version'] &&
-      node.automatic_attrs['nginx']['configure_arguments'].sort == configure_flags.sort
-  end
-
-  notifies :restart, "service[nginx]"
 end
 
 node.run_state.delete('nginx_configure_flags')
