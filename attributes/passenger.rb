@@ -45,7 +45,6 @@ node.default["nginx"]["passenger"]["gem_binary"] = nil
 
 
 # General
-default[:nginx][:passenger][:use_global_queue] = true
 
 # Security
 default[:nginx][:passenger][:user_switching] = true
