@@ -2,7 +2,9 @@
 passenger_root <%= @passenger_root %>;
 passenger_ruby <%= @passenger_ruby %>;
 passenger_spawn_method <%= @passenger_spawn_method %>;
+<% if(node[:nginx][:passenger][:version] < "4") -%>
 passenger_use_global_queue <%= @passenger_use_global_queue %>;
+<% end -%>
 
 # Connection handling
 passenger_buffer_response <%= @passenger_buffer_response %>;
@@ -20,6 +22,9 @@ passenger_max_pool_size <%= @passenger_max_pool_size %>;
 passenger_min_instances <%= @passenger_min_instances %>;
 passenger_max_instances_per_app <%= @passenger_max_instances_per_app %>;
 passenger_pool_idle_time <%= @passenger_pool_idle_time %>;
+<% if(node[:nginx][:passenger][:version] >= "4") -%>
+passenger_max_preloader_idle_time <%= node[:nginx][:passenger][:max_preloader_idle_time] %>;
+<% end -%>
 passenger_max_requests <%= @passenger_max_requests %>;
 <% node[:nginx][:passenger][:pre_start_urls].each do |url| -%>
 passenger_pre_start <%= url %>;
@@ -36,8 +41,10 @@ passenger_debug_log_file <%= node[:nginx][:passenger][:debug_log_file] %>;
 passenger_base_uri <%= node[:nginx][:passenger][:rails_base_uri] %>;
 <% end -%>
 rails_env <%= node[:nginx][:passenger][:rails_env] %>;
+<% if(node[:nginx][:passenger][:version] < "4") -%>
 rails_framework_spawner_idle_time <%= node[:nginx][:passenger][:rails_framework_spawner_idle_time] %>;
 rails_app_spawner_idle_time <%= node[:nginx][:passenger][:rails_app_spawner_idle_time] %>;
+<% end -%>
 
 # Rack-specific
 <% if node[:nginx][:passenger][:rack_base_uri] -%>

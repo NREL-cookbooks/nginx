@@ -53,6 +53,7 @@ default[:nginx][:passenger][:default_group] = nil
 default[:nginx][:passenger][:friendly_error_pages] = true
 
 # Resource control and optimization
+default[:nginx][:passenger][:max_preloader_idle_time] = 300
 default[:nginx][:passenger][:stat_throttle_rate] = 0
 default[:nginx][:passenger][:pre_start_urls] = []
 default[:nginx][:passenger][:high_performance] = false
