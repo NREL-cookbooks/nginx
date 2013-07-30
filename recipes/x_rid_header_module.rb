@@ -24,4 +24,4 @@ bash 'extract_x_rid_header_module' do
 end
 
 node.run_state['nginx_configure_flags'] =
-  node.run_state['nginx_configure_flags'] | ["--add-module=#{extract_path} --with-ld-opt='-l ossp-uuid'"]
+  node.run_state['nginx_configure_flags'] | ["--add-module=#{extract_path}", "--with-ld-opt='-l ossp-uuid'"]
