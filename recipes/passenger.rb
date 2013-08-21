@@ -17,6 +17,13 @@
 
 include_recipe "rbenv::system"
 
+# Set these attributes here, rather than in the attributes file, so the rbenv
+# cookbook has a chance to override them.
+if node["languages"].attribute?("ruby")
+  node.default["nginx"]["passenger"]["root"] = "#{node['languages']['ruby']['gems_dir']}/gems/passenger-#{node['nginx']['passenger']['version']}"
+  node.default["nginx"]["passenger"]["ruby"] = node['languages']['ruby']['ruby_bin']
+end
+
 packages = value_for_platform( ["redhat", "centos", "scientific", "amazon", "oracle"] => {
                                  "default" => %w(ruby-devel curl-devel) },
                                ["ubuntu", "debian"] => {
@@ -26,12 +33,11 @@ packages.each do |devpkg|
   package devpkg
 end
 
-gem_package 'rake'
+rbenv_gem 'rake'
 
-gem_package 'passenger' do
+rbenv_gem 'passenger' do
   action :install
   version node["nginx"]["passenger"]["version"]
-  gem_binary node["nginx"]["passenger"]["gem_binary"] if node["nginx"]["passenger"]["gem_binary"]
 end
 
 template "#{node["nginx"]["dir"]}/conf.d/passenger.conf" do
