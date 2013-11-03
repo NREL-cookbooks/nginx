@@ -18,6 +18,12 @@ logrotate_app "nginx" do
   frequency "daily"
   rotate node[:nginx][:logrotate][:rotate]
   create "644 #{node[:nginx][:user]} root"
-  cookbook "nginx"
+  options %w(missingok compress delaycompress notifempty)
+  sharedscripts true
+
+  # Ideally we send nginx the "reopen" signal so a full reload isn't
+  # necessary. But this doesn't properly rotate Pasenger's Rails log files,
+  # so we'll do a "reload" instead.
+  postrotate "#{node[:nginx][:binary]} -s reload"
 end
 
