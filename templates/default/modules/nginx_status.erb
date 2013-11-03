@@ -1,11 +1,14 @@
+include authorized_ip;
+
 server {
-  listen 8055;
+  listen <%= node['nginx']['status']['port'] %>;
   server_name _;
-  
+
   location /nginx_status {
+    if ($authorized_ip = no) {
+      return 404;
+    }
     stub_status on;
     access_log off;
-    allow 127.0.0.1;
-    deny all;
   }
 }

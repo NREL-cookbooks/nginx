@@ -1,13 +1,12 @@
-# General
-passenger_root <%= @passenger_root %>;
-passenger_ruby <%= @passenger_ruby %>;
-passenger_spawn_method <%= @passenger_spawn_method %>;
-<% if(node[:nginx][:passenger][:version] < "4") -%>
-passenger_use_global_queue <%= @passenger_use_global_queue %>;
-<% end -%>
-
-# Connection handling
-passenger_buffer_response <%= @passenger_buffer_response %>;
+passenger_root <%= node['nginx']['passenger']['root'] %>;
+passenger_ruby <%= node['nginx']['passenger']['ruby'] %>;
+passenger_max_pool_size <%= node['nginx']['passenger']['max_pool_size'] %>;
+passenger_spawn_method <%= node['nginx']['passenger']['spawn_method'] %>;
+passenger_buffer_response <%= node['nginx']['passenger']['buffer_response'] %>;
+passenger_min_instances <%= node['nginx']['passenger']['min_instances'] %>;
+passenger_max_instances_per_app <%= node['nginx']['passenger']['max_instances_per_app'] %>;
+passenger_pool_idle_time <%= node['nginx']['passenger']['pool_idle_time'] %>;
+passenger_max_requests <%= node['nginx']['passenger']['max_requests'] %>;
 
 # Security
 passenger_user_switching <%= if(node[:nginx][:passenger][:user_switching]) then "on" else "off" end %>;
@@ -18,14 +17,9 @@ Passenger_default_group <%= node[:nginx][:passenger][:default_group] %>;
 passenger_friendly_error_pages <%= if(node[:nginx][:passenger][:friendly_error_pages]) then "on" else "off" end %>;
 
 # Resource control and optimization
-passenger_max_pool_size <%= @passenger_max_pool_size %>;
-passenger_min_instances <%= @passenger_min_instances %>;
-passenger_max_instances_per_app <%= @passenger_max_instances_per_app %>;
-passenger_pool_idle_time <%= @passenger_pool_idle_time %>;
 <% if(node[:nginx][:passenger][:version] >= "4") -%>
 passenger_max_preloader_idle_time <%= node[:nginx][:passenger][:max_preloader_idle_time] %>;
 <% end -%>
-passenger_max_requests <%= @passenger_max_requests %>;
 <% node[:nginx][:passenger][:pre_start_urls].each do |url| -%>
 passenger_pre_start <%= url %>;
 <% end -%>
