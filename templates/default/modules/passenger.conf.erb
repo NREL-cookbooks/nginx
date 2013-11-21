@@ -46,13 +46,6 @@ passenger_base_uri <%= node[:nginx][:passenger][:rack_base_uri] %>;
 <% end -%>
 # rack_env <%= node[:nginx][:passenger][:rack_env] %>;
 
-# Environment Variables
-<% if(node.recipe?("oracle_instantclient")) -%>
-passenger_set_cgi_param LD_LIBRARY_PATH "<%= node[:oracle_instantclient][:path] %>";
-passenger_set_cgi_param ORACLE_HOME "<%= node[:oracle_instantclient][:path] %>";
-passenger_set_cgi_param TNS_ADMIN "<%= node[:oracle_instantclient][:path] %>";
-<% end -%>
-
 # Per Cyber Security: Disable showing the specific version of Passenger
 # running.
 passenger_show_version_in_header off;
