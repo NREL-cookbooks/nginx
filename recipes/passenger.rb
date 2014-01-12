@@ -27,12 +27,14 @@ if node["languages"].attribute?("ruby")
 end
 
 packages = value_for_platform_family(
-  %w[rhel]   => %w[ruby-devel curl-devel],
-  %w[debian] => %w[ruby-dev libcurl4-gnutls-dev]
+  %w[rhel]   => node['nginx']['passenger']['packages']['rhel'],
+  %w[debian] => node['nginx']['passenger']['packages']['debian']
 )
 
-packages.each do |name|
-  package name
+unless packages.empty?
+  packages.each do |name|
+    package name
+  end
 end
 
 rbenv_gem 'rake'

@@ -22,7 +22,7 @@ include_recipe 'nginx::ohai_plugin'
 
 if platform_family?('rhel')
   if node['nginx']['repo_source'] == 'epel'
-    include_recipe 'yum::epel'
+    include_recipe 'yum-epel'
   elsif node['nginx']['repo_source'] == 'nginx'
     include_recipe 'nginx::repo'
   elsif node['nginx']['repo_source'].nil?
@@ -32,6 +32,8 @@ if platform_family?('rhel')
   else
     fail ArgumentError, "Unknown value '#{node['nginx']['repo_source']}' was passed to the nginx cookbook."
   end
+elsif platform_family?('debian')
+  include_recipe 'nginx::repo' if node['nginx']['repo_source'] == 'nginx'
 end
 
 package node['nginx']['package_name'] do
