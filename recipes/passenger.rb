@@ -37,7 +37,9 @@ unless packages.empty?
   end
 end
 
-rbenv_gem 'rake'
+if(!node['rbenv']['global'] || node['rbenv']['global'] < "2.0.0")
+  rbenv_gem 'rake'
+end
 
 rbenv_gem 'passenger' do
   action     :install
