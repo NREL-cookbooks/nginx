@@ -7,6 +7,6 @@
 # All rights reserved - Do Not Redistribute
 #
 
-default['nginx']['auth_ldap']['version'] = '0.1'
-default['nginx']['auth_ldap']['url'] = "http://github.com/downloads/kvspb/nginx-auth-ldap/nginx-auth-ldap-0.1.tar.gz"
-default['nginx']['auth_ldap']['checksum'] = '3929dc54e2a847df04319fdc60e30bdb5e0be6e3ca4d6d98f51d529d50027b25'
+default['nginx']['auth_ldap']['version'] = 'v0.1'
+default['nginx']['auth_ldap']['url'] = "https://github.com/kvspb/nginx-auth-ldap/archive/#{node['nginx']['auth_ldap']['version']}.tar.gz"
+default['nginx']['auth_ldap']['checksum'] = '709ba34b524f5c27aad1cc50a53a2362b531ef03a195b0478fabafe7d221711a'
