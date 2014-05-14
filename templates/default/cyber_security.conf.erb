@@ -1,1 +1,4 @@
 server_tokens off;
+<% if(node[:nginx][:install_method] == "source" && node[:nginx][:source][:modules].include?("nginx::headers_more_module")) -%>
+more_clear_headers 'X-Powered-By';
+<% end -%>
