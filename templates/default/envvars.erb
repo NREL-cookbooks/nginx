@@ -1,4 +1,4 @@
-<% if(node.recipe?("rbenv::system")) -%>
+<% if(node.recipe?("rbenv::system") || node[:rbenv][:root_path]) -%>
 export RBENV_ROOT=<%= node[:rbenv][:root_path] %>
 export PATH=$RBENV_ROOT/bin:$PATH
 <% end -%>
