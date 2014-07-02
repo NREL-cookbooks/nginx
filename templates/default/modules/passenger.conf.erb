@@ -17,7 +17,7 @@ Passenger_default_group <%= node[:nginx][:passenger][:default_group] %>;
 passenger_friendly_error_pages <%= if(node[:nginx][:passenger][:friendly_error_pages]) then "on" else "off" end %>;
 
 # Resource control and optimization
-<% if(node[:nginx][:passenger][:version] >= "4") -%>
+<% if(node[:nginx][:passenger][:version].to_i >= 4) -%>
 passenger_max_preloader_idle_time <%= node[:nginx][:passenger][:max_preloader_idle_time] %>;
 <% end -%>
 <% node[:nginx][:passenger][:pre_start_urls].each do |url| -%>
@@ -35,7 +35,7 @@ passenger_debug_log_file <%= node[:nginx][:passenger][:debug_log_file] %>;
 passenger_base_uri <%= node[:nginx][:passenger][:rails_base_uri] %>;
 <% end -%>
 rails_env <%= node[:nginx][:passenger][:rails_env] %>;
-<% if(node[:nginx][:passenger][:version] < "4") -%>
+<% if(node[:nginx][:passenger][:version].to_i < 4) -%>
 rails_framework_spawner_idle_time <%= node[:nginx][:passenger][:rails_framework_spawner_idle_time] %>;
 rails_app_spawner_idle_time <%= node[:nginx][:passenger][:rails_app_spawner_idle_time] %>;
 <% end -%>

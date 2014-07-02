@@ -33,8 +33,8 @@ else
   node.default['nginx']['passenger']['ruby'] = '/usr/bin/ruby'
 end
 
-node.default['nginx']['passenger']['spawn_method'] = 'smart-lv2'
-node.default['nginx']['passenger']['buffer_response'] = 'on'
+node.default['nginx']['passenger']['spawn_method'] = if(node['nginx']['passenger']['version'].to_i >= 4) then 'smart' else 'smart-lv2' end
+node.default['nginx']['passenger']['buffer_response'] = if(node['nginx']['passenger']['version'].to_i >= 4) then 'off' else 'on' end
 node.default['nginx']['passenger']['max_pool_size'] = 6
 node.default['nginx']['passenger']['min_instances'] = 1
 node.default['nginx']['passenger']['max_instances_per_app'] = 0
